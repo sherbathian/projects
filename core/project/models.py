@@ -9,11 +9,11 @@ class Project(models.Model):
     ]
 
     name = models.CharField(max_length=255)
-    description = models.TextField()
+    description = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='rented')
-    start_date = models.DateField()
+    start_date = models.DateField(blank=True, null=True)
     end_date = models.DateField(null=True, blank=True)
-    budget = models.DecimalField(max_digits=10, decimal_places=2)
+    budget = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -43,12 +43,25 @@ class ProjectParty(models.Model):
     def __str__(self):
         return f"{self.party.name} - {self.project.name} ({self.share}%)"
 
+## ProjectLedger Model
+class ProjectLedger(models.Model):
+    project = models.ForeignKey(Project, related_name='ledgerPrject', on_delete=models.CASCADE)
+    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    received_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    transaction_date = models.DateField(blank=True, null=True)
+    comments = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.project.name} - {self.paid_amount} - {self.received_amount} on {self.transaction_date}"
+
 ## PartyProjectLedger Model
 class PartyProjectLedger(models.Model):
     party = models.ForeignKey(Party, related_name='ledger', on_delete=models.CASCADE)
     project = models.ForeignKey(Project, related_name='ledger', on_delete=models.CASCADE)
-    paid_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    received_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    received_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     comments = models.TextField(blank=True, null=True)
@@ -56,7 +69,8 @@ class PartyProjectLedger(models.Model):
     
     def __str__(self):
         return f"{self.party.name} - {self.project.name} ({self.transaction_date})"
-    
+
+## PartyLedger Model
 class PartyLedger(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     paid_by = models.ForeignKey(Party, on_delete=models.SET_NULL, null=True, related_name='payments_made')
@@ -67,7 +81,7 @@ class PartyLedger(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.party.name} - {self.amount} on {self.transaction_date}"    
+        return f"{self.paid_by.name} to {self.received_by.name} - {self.amount} on {self.transaction_date}"    
 
 ## Saddqah Model
 class Saddqah(models.Model):
@@ -88,4 +102,4 @@ class Saddqah(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.party.name} - {self.project.name} ({self.amount})"
+        return f"{self.party.name} -  ({self.amount})"
