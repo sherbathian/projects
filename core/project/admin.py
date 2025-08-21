@@ -9,12 +9,12 @@ class ProjectAdmin(admin.ModelAdmin):
     list_display = ('name', 'status', 'start_date', 'end_date', 'budget')
     list_filter = ('status',)
     search_fields = ('name', 'description')
-
+    
 @admin.register(Party)
 class PartyAdmin(admin.ModelAdmin):
     list_display = ('name', 'email', 'phone', 'address')
     search_fields = ('name', 'email', 'phone')
-
+    
 @admin.register(ProjectParty)
 class ProjectPartyAdmin(admin.ModelAdmin):
     list_display = ('project', 'party', 'share')
@@ -22,7 +22,7 @@ class ProjectPartyAdmin(admin.ModelAdmin):
 
 @admin.register(ProjectLedger)
 class ProjectLedgerAdmin(admin.ModelAdmin):
-    list_display = ('project', 'paid_amount', 'received_amount', 'transaction_date')
+    list_display = ('project', 'paid_amount', 'received_amount', 'transaction_date', 'comments')
     list_filter = ('project', 'transaction_date')
 
 @admin.register(PartyProjectLedger)
