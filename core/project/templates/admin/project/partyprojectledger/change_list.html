@@ -1,0 +1,10 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+<div style="padding:10px; margin-bottom:10px; background:#f5f5f5; border:1px solid #ddd;">
+    <strong>Total Received (visible):</strong>
+    {{ total_received }}
+</div>
+
+{{ block.super }}
+{% endblock %}

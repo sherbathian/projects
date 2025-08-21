@@ -1,7 +1,8 @@
 from django.contrib import admin
-
+from django.db.models import Sum
 from .models import Project, Party, ProjectParty, ProjectLedger, PartyProjectLedger
 from .models import PartyLedger, Saddqah
+from django.db.models import Sum
 
 # Register your models here.
 @admin.register(Project)
@@ -29,6 +30,22 @@ class ProjectLedgerAdmin(admin.ModelAdmin):
 class PartyProjectLedgerAdmin(admin.ModelAdmin):
     list_display = ('party', 'project', 'paid_amount', 'received_amount', 'transaction_date')
     list_filter = ('party', 'project', 'transaction_date')
+    change_list_template = 'admin/project/partyprojectledger/change_list.html'
+
+    def changelist_view(self, request, extra_context=None):
+        """Inject total received amount for the current changelist queryset into the template context."""
+        response = super().changelist_view(request, extra_context=extra_context)
+        try:
+            # response.context_data is available when TemplateResponse is returned
+            cl = response.context_data['cl']
+            qs = cl.queryset
+        except Exception:
+            return response
+
+        total = qs.aggregate(total_received=Sum('received_amount'))['total_received'] or 0
+        response.context_data['total_received'] = total
+        return response
+
 
 @admin.register(PartyLedger)
 class PartyLedgerAdmin(admin.ModelAdmin):
