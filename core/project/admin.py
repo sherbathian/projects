@@ -25,6 +25,24 @@ class ProjectPartyAdmin(admin.ModelAdmin):
 class ProjectLedgerAdmin(admin.ModelAdmin):
     list_display = ('project', 'paid_amount', 'received_amount', 'transaction_date', 'comments')
     list_filter = ('project', 'transaction_date')
+    change_list_template = 'admin/project/partyprojectledger/change_list.html'
+
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context=extra_context)
+        try:
+            cl = response.context_data.get('cl')
+            if cl is not None:
+                qs = cl.queryset
+                totals = qs.aggregate(
+                    total_received=Sum('received_amount'),
+                    total_paid=Sum('paid_amount'),
+                )
+                response.context_data['total_received'] = totals.get('total_received') or 0
+                response.context_data['total_paid'] = totals.get('total_paid') or 0
+        except Exception:
+            response.context_data.setdefault('total_received', 0)
+            response.context_data.setdefault('total_paid', 0)
+        return response
 
 @admin.register(PartyProjectLedger)
 class PartyProjectLedgerAdmin(admin.ModelAdmin):
@@ -36,14 +54,19 @@ class PartyProjectLedgerAdmin(admin.ModelAdmin):
         """Inject total received amount for the current changelist queryset into the template context."""
         response = super().changelist_view(request, extra_context=extra_context)
         try:
-            # response.context_data is available when TemplateResponse is returned
-            cl = response.context_data['cl']
-            qs = cl.queryset
+            cl = response.context_data.get('cl')
+            if cl is not None:
+                qs = cl.queryset
+                totals = qs.aggregate(
+                    total_received=Sum('received_amount'),
+                    total_paid=Sum('paid_amount'),
+                )
+                response.context_data['total_received'] = totals.get('total_received') or 0
+                response.context_data['total_paid'] = totals.get('total_paid') or 0
         except Exception:
-            return response
-
-        total = qs.aggregate(total_received=Sum('received_amount'))['total_received'] or 0
-        response.context_data['total_received'] = total
+            # keep admin stable if aggregation fails
+            response.context_data.setdefault('total_received', 0)
+            response.context_data.setdefault('total_paid', 0)
         return response
 
 
@@ -51,10 +74,40 @@ class PartyProjectLedgerAdmin(admin.ModelAdmin):
 class PartyLedgerAdmin(admin.ModelAdmin):
     list_display = ('paid_by', 'received_by', 'amount', 'transaction_date')
     list_filter = ('paid_by', 'received_by', 'transaction_date')
+    change_list_template = 'admin/project/partyledger/change_list.html'
+
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context=extra_context)
+        try:
+            cl = response.context_data.get('cl')
+            if cl is not None:
+                qs = cl.queryset
+                totals = qs.aggregate(
+                    total_amount=Sum('amount'),
+                )
+                response.context_data['total_amount'] = totals.get('total_amount') or 0
+        except Exception:
+            response.context_data.setdefault('total_amount', 0)
+        return response
 
 @admin.register(Saddqah)
 class SaddqahAdmin(admin.ModelAdmin):
     list_display = ('party', 'amount', 'name', 'category', 'transaction_date')
     list_filter = ('party', 'category', 'transaction_date')
     search_fields = ('party__name', 'name')
-    ordering = ('-transaction_date',)   
+    ordering = ('-transaction_date',)
+    change_list_template = 'admin/project/saddqah/change_list.html'
+
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context=extra_context)
+        try:
+            cl = response.context_data.get('cl')
+            if cl is not None:
+                qs = cl.queryset
+                totals = qs.aggregate(
+                    total_amount=Sum('amount'),
+                )
+                response.context_data['total_amount'] = totals.get('total_amount') or 0
+        except Exception:
+            response.context_data.setdefault('total_amount', 0)
+        return response   
