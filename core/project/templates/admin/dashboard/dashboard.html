@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    {% comment %} <link rel="stylesheet" href="{% static 'project/css/dashboard.css' %}"> {% endcomment %}
+</head>
+<body>
+    <div class="dashboard-container">
+        <h1>Dashboard</h1>
+        <div class="charts">
+            <div class="chart" id="saddqah-chart">
+                <h2>Saddqah Amount per Month</h2>
+                <canvas id="saddqahChart"></canvas>
+            </div>
+            <div class="chart" id="project-ledger-chart">
+                <h2>Project Ledgers</h2>
+                <canvas id="projectLedgerChart"></canvas>
+            </div>
+            <div class="chart" id="party-project-ledger-chart">
+                <h2>Party Project Ledgers</h2>
+                <canvas id="partyProjectLedgerChart"></canvas>
+            </div>
+        </div>
+    </div>
+    {% comment %} <script src="{% static 'project/js/dashboard.js' %}"></script> {% endcomment %}
+</body>
+</html>

@@ -70,8 +70,8 @@ class ProjectParty(models.Model):
 ## ProjectLedger Model
 class ProjectLedger(models.Model):
     project = models.ForeignKey(Project, related_name='ledgerPrject', on_delete=models.CASCADE)
-    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-    received_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
+    received_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     transaction_date = models.DateField(blank=True, null=True)
     comments = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -134,8 +134,8 @@ def create_party_project_ledgers(sender, instance, created, **kwargs):
 class PartyProjectLedger(models.Model):
     party = models.ForeignKey(Party, related_name='ledger', on_delete=models.CASCADE)
     project = models.ForeignKey(Project, related_name='ledger', on_delete=models.CASCADE)
-    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-    received_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
+    received_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     comments = models.TextField(blank=True, null=True)

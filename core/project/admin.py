@@ -3,6 +3,10 @@ from django.db.models import Sum
 from .models import Project, Party, ProjectParty, ProjectLedger, PartyProjectLedger
 from .models import PartyLedger, Saddqah
 from django.db.models import Sum
+import datetime
+from django.template.response import TemplateResponse
+from django.urls import path
+
 
 # Register your models here.
 @admin.register(Project)
@@ -111,3 +115,50 @@ class SaddqahAdmin(admin.ModelAdmin):
         except Exception:
             response.context_data.setdefault('total_amount', 0)
         return response   
+    
+class SaddqahReportAdminView:
+    @staticmethod
+    def dashboard_view(request):
+        year = int(request.GET.get('year', datetime.datetime.now().year))
+        saddqah_data = (
+            Saddqah.objects.filter(transaction_date__year=year)
+            .values('transaction_date__month')
+            .annotate(total=Sum('amount'))
+            .order_by('transaction_date__month')
+        )
+        received_data = (
+            ProjectLedger.objects.filter(transaction_date__year=year)
+            .values('transaction_date__month')
+            .annotate(total=Sum('received_amount'))
+            .order_by('transaction_date__month')
+        )
+        months = [datetime.date(2000, m, 1).strftime('%B') for m in range(1, 13)]
+        saddqah_amounts = [0]*12
+        received_amounts = [0]*12
+        for entry in saddqah_data:
+            saddqah_amounts[entry['transaction_date__month']-1] = float(entry['total'])
+        for entry in received_data:
+            received_amounts[entry['transaction_date__month']-1] = float(entry['total'])
+        years = Saddqah.objects.dates('transaction_date', 'year').distinct()
+        context = dict(
+            admin.site.each_context(request),
+            months=months,
+            saddqah_amounts=saddqah_amounts,
+            received_amounts=received_amounts,
+            selected_year=year,
+            years=[y.year for y in years],
+        )
+        return TemplateResponse(request, "admin/project/dashboard.html", context)
+
+# Add dashboard URL to admin
+def get_admin_urls(urls):
+    def get_urls():
+        my_urls = [
+            path('dashboard/', admin.site.admin_view(SaddqahReportAdminView.dashboard_view), name='saddqah_dashboard'),
+        ]
+        return my_urls + urls()
+    return get_urls
+
+admin.site.get_urls = get_admin_urls(admin.site.get_urls)
+
+# ...existing code...
