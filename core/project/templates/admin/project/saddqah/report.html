@@ -1,0 +1,31 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1>Saddqah Reports</h1>
+<form method="get" style="margin-bottom:20px;">
+    <label for="year">Year:</label>
+    <select name="year" id="year" onchange="this.form.submit()">
+        {% for y in years %}
+            <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+    </select>
+</form>
+<div style="width:100%;max-width:800px;">
+    <canvas id="saddqahChart"></canvas>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const months = {{ months|safe }};
+const saddqahAmounts = {{ saddqah_amounts|safe }};
+new Chart(document.getElementById('saddqahChart'), {
+    type: 'bar',
+    data: {
+        labels: months,
+        datasets: [{
+            label: 'Total Saddqah Amount',
+            data: saddqahAmounts,
+            backgroundColor: 'rgba(54, 162, 235, 0.5)'
+        }]
+    }
+});
+</script>
+{% endblock %}

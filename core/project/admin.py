@@ -115,7 +115,8 @@ class SaddqahAdmin(admin.ModelAdmin):
         except Exception:
             response.context_data.setdefault('total_amount', 0)
         return response   
-    
+
+# Custom admin view for Saddqah reports
 class SaddqahReportAdminView:
     @staticmethod
     def dashboard_view(request):
@@ -126,30 +127,19 @@ class SaddqahReportAdminView:
             .annotate(total=Sum('amount'))
             .order_by('transaction_date__month')
         )
-        received_data = (
-            ProjectLedger.objects.filter(transaction_date__year=year)
-            .values('transaction_date__month')
-            .annotate(total=Sum('received_amount'))
-            .order_by('transaction_date__month')
-        )
         months = [datetime.date(2000, m, 1).strftime('%B') for m in range(1, 13)]
         saddqah_amounts = [0]*12
-        received_amounts = [0]*12
         for entry in saddqah_data:
             saddqah_amounts[entry['transaction_date__month']-1] = float(entry['total'])
-        for entry in received_data:
-            received_amounts[entry['transaction_date__month']-1] = float(entry['total'])
         years = Saddqah.objects.dates('transaction_date', 'year').distinct()
         context = dict(
             admin.site.each_context(request),
             months=months,
             saddqah_amounts=saddqah_amounts,
-            received_amounts=received_amounts,
             selected_year=year,
             years=[y.year for y in years],
         )
-        return TemplateResponse(request, "admin/project/dashboard.html", context)
-
+        return TemplateResponse(request, "admin/project/saddqah/report.html", context)
 # Add dashboard URL to admin
 def get_admin_urls(urls):
     def get_urls():
@@ -161,4 +151,65 @@ def get_admin_urls(urls):
 
 admin.site.get_urls = get_admin_urls(admin.site.get_urls)
 
-# ...existing code...
+# Custom admin view for Project Ledger reports
+class ProjectLedgerReportAdminView:
+    @staticmethod
+    def dashboard_view(request):
+        year = int(request.GET.get('year', datetime.datetime.now().year))
+        ledger_data = (
+            ProjectLedger.objects.filter(transaction_date__year=year)
+            .values('transaction_date__month')
+            .annotate(total_received=Sum('received_amount'), total_paid=Sum('paid_amount'))
+            .order_by('transaction_date__month')
+        )
+        months = [datetime.date(2000, m, 1).strftime('%B') for m in range(1, 13)]
+        received_amounts = [0]*12
+        paid_amounts = [0]*12
+        for entry in ledger_data:
+            received_amounts[entry['transaction_date__month']-1] = float(entry['total_received'] or 0)
+            paid_amounts[entry['transaction_date__month']-1] = float(entry['total_paid'] or 0)
+        years = ProjectLedger.objects.dates('transaction_date', 'year').distinct()
+        context = dict(
+            admin.site.each_context(request),
+            months=months,
+            received_amounts=received_amounts,
+            paid_amounts=paid_amounts,
+            selected_year=year,
+            years=[y.year for y in years],
+        )
+        return TemplateResponse(request, "admin/project/ledger_dashboard.html", context)
+
+
+# class SaddqahReportAdminView:
+#     @staticmethod
+#     def dashboard_view(request):
+#         year = int(request.GET.get('year', datetime.datetime.now().year))
+#         saddqah_data = (
+#             Saddqah.objects.filter(transaction_date__year=year)
+#             .values('transaction_date__month')
+#             .annotate(total=Sum('amount'))
+#             .order_by('transaction_date__month')
+#         )
+#         received_data = (
+#             ProjectLedger.objects.filter(transaction_date__year=year)
+#             .values('transaction_date__month')
+#             .annotate(total=Sum('received_amount'))
+#             .order_by('transaction_date__month')
+#         )
+#         months = [datetime.date(2000, m, 1).strftime('%B') for m in range(1, 13)]
+#         saddqah_amounts = [0]*12
+#         received_amounts = [0]*12
+#         for entry in saddqah_data:
+#             saddqah_amounts[entry['transaction_date__month']-1] = float(entry['total'])
+#         for entry in received_data:
+#             received_amounts[entry['transaction_date__month']-1] = float(entry['total'])
+#         years = Saddqah.objects.dates('transaction_date', 'year').distinct()
+#         context = dict(
+#             admin.site.each_context(request),
+#             months=months,
+#             saddqah_amounts=saddqah_amounts,
+#             received_amounts=received_amounts,
+#             selected_year=year,
+#             years=[y.year for y in years],
+#         )
+#         return TemplateResponse(request, "admin/saddqah/project/dashboard.html", context)
