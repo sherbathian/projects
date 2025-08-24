@@ -3,7 +3,8 @@
     <div class="module" id="saddqah-dashboard-link-legacy">
     <h2>{% trans "Reports" %}</h2>
     <ul class="nav nav-pills nav-stacked" style="margin-left: 6px;">
-      <li style="list-style: none;"><a href="{% url 'admin:saddqah_dashboard' %}">{% trans "Saddqah" %}</a></li>
+      <li style="list-style: none;"><a href="{% url 'admin:saddqah_report' %}">{% trans "Saddqah" %}</a></li>
+      <li style="list-style: none;"><a href="{% url 'admin:project_ledger_report' %}">{% trans "Project Ledger" %}</a></li>
     </ul>
   </div>
 {% if app_list %}
