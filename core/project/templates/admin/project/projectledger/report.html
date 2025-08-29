@@ -1,37 +1,112 @@
 {% extends "admin/base_site.html" %}
 {% block content %}
 <h1>Project Ledger</h1>
-<form method="get" style="margin-bottom:20px;">
-    <label for="year">Year:</label>
-    <select name="year" id="year" onchange="this.form.submit()">
-        {% for y in years %}
-            <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+
+<form method="get" style="margin-bottom:12px;">
+    <label for="project">Project:</label>
+    <select name="project" id="project" onchange="this.form.submit()">
+        <option value="any" {% if selected_project == 'any' %}selected{% endif %}>Any</option>
+        {% for p in projects %}
+            <option value="{{ p.id }}" {% if selected_project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
         {% endfor %}
     </select>
+
+    <label for="year">Year:</label>
+    <select name="year" id="year" onchange="this.form.submit()">
+        <option value="any" {% if selected_year == 'any' %}selected{% endif %}>Any</option>
+        {% for y in years %}
+            <option value="{{ y }}" {% if selected_year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+    </select>
+
+    <label for="start_date">Start date:</label>
+    <input type="date" id="start_date" name="start_date" value="{{ start_date }}" onchange="this.form.submit()">
+
+    <label for="end_date">End date:</label>
+    <input type="date" id="end_date" name="end_date" value="{{ end_date }}" onchange="this.form.submit()">
 </form>
-<div style="width:100%;max-width:800px;margin-top:40px;">
+
+<div style="margin-bottom:8px;">
+    <button id="exportPdf" type="button">Export PDF</button>
+</div>
+
+<table class="results">
+    <thead>
+        <tr>
+            <th>Year</th>
+            <th>Month</th>
+            <th>Received Amount</th>
+            <th>Paid Amount</th>
+            <th>Balance Amount</th>
+        </tr>
+    </thead>
+    <tbody id="ledgerBody">
+        <!-- rows will be populated by JS -->
+    </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="2" style="text-align:right;">Totals:</th>
+            <th id="totalReceived">{{ total_received_all }}</th>
+            <th id="totalPaid">{{ total_paid_all }}</th>
+            <th id="totalBalance">{{ total_balance_all }}</th>
+        </tr>
+    </tfoot>
+</table>
+
+<div style="width:100%;max-width:900px;margin-top:20px;">
     <canvas id="receivedChart"></canvas>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const months = {{ months|safe }};
-const receivedAmounts = {{ received_amounts|safe }};
-const paidAmounts = {{ paid_amounts|safe }};
+const rows = {{ rows|safe }};
+
+// draw chart (labels are "Month Year")
 new Chart(document.getElementById('receivedChart'), {
     type: 'bar',
     data: {
-        labels: months,
+        labels: rows.map(r => `${r.month} ${r.year}`),
         datasets: [{
-            label: 'Total Project Received Amount',
-            data: receivedAmounts,
+            label: 'Received',
+            data: rows.map(r => r.received),
             backgroundColor: 'rgba(255, 99, 132, 0.5)'
         },
         {
-            label: 'Total Project Paid Amount',
-            data: paidAmounts,
+            label: 'Paid',
+            data: rows.map(r => r.paid),
             backgroundColor: 'rgba(117, 99, 255, 0.5)'
+        },
+        {
+            label: 'Balance',
+            data: rows.map(r => r.balance),
+            backgroundColor: 'rgba(82, 223, 155, 0.5)'
         }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            x: { stacked: false },
+            y: { beginAtZero: true }
+        }
     }
+});
+
+// populate table rows
+(function populateTable(){
+    const tbody = document.getElementById('ledgerBody');
+    tbody.innerHTML = '';
+    rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.year}</td><td>${r.month}</td><td>${r.received}</td><td>${r.paid}</td><td>${r.balance}</td>`;
+        tbody.appendChild(tr);
+    });
+})();
+
+// export PDF button: navigate to export endpoint preserving query string
+document.getElementById('exportPdf').addEventListener('click', function(){
+    const base = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
+    const exportUrl = base + 'export_pdf/' + window.location.search;
+    window.location.href = exportUrl;
 });
 </script>
 {% endblock %}
