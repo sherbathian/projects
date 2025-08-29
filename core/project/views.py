@@ -24,3 +24,17 @@ def dashboard(request):
     }
 
     return render(request, 'admin/dashboard/dashboard.html', context)
+
+
+
+def report_view(request):
+    # Fetch data for the report
+    project_ledgers = ProjectLedger.objects.all()
+    party_project_ledgers = PartyProjectLedger.objects.all()
+
+    context = {
+        'project_ledgers': project_ledgers,
+        'party_project_ledgers': party_project_ledgers,
+    }
+
+    return render(request, 'admin/project/partyprojectledger/report.html', context)

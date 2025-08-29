@@ -136,6 +136,7 @@ class PartyProjectLedger(models.Model):
     project = models.ForeignKey(Project, related_name='ledger', on_delete=models.CASCADE)
     paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     received_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
+    withdrawn_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     comments = models.TextField(blank=True, null=True)

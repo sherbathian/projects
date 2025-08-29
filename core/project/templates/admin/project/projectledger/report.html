@@ -16,6 +16,7 @@
 <script>
 const months = {{ months|safe }};
 const receivedAmounts = {{ received_amounts|safe }};
+const paidAmounts = {{ paid_amounts|safe }};
 new Chart(document.getElementById('receivedChart'), {
     type: 'bar',
     data: {
@@ -24,6 +25,11 @@ new Chart(document.getElementById('receivedChart'), {
             label: 'Total Project Received Amount',
             data: receivedAmounts,
             backgroundColor: 'rgba(255, 99, 132, 0.5)'
+        },
+        {
+            label: 'Total Project Paid Amount',
+            data: paidAmounts,
+            backgroundColor: 'rgba(117, 99, 255, 0.5)'
         }]
     }
 });

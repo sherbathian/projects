@@ -41,6 +41,8 @@ class ProjectLedgerAdmin(admin.ModelAdmin):
 
     def changelist_view(self, request, extra_context=None):
         response = super().changelist_view(request, extra_context=extra_context)
+        if not hasattr(response, 'context_data') or response.context_data is None:
+            return response
         try:
             cl = response.context_data.get('cl')
             if cl is not None:
@@ -59,13 +61,17 @@ class ProjectLedgerAdmin(admin.ModelAdmin):
 # Admin for PartyProjectLedger with total amount display
 @admin.register(PartyProjectLedger)
 class PartyProjectLedgerAdmin(admin.ModelAdmin):
-    list_display = ('party', 'project', 'paid_amount', 'received_amount', 'transaction_date')
+    list_display = ('party', 'project', 'paid_amount', 'received_amount', 'withdrawn_amount', 'transaction_date', 'comments')
     list_filter = ('party', 'project', 'transaction_date')
+    list_per_page = 20
+   
     change_list_template = 'admin/project/partyprojectledger/change_list.html'
 
     def changelist_view(self, request, extra_context=None):
         """Inject total received/paid for the current changelist queryset into the template context."""
         response = super().changelist_view(request, extra_context=extra_context)
+        if not hasattr(response, 'context_data') or response.context_data is None:
+            return response
         try:
             cl = response.context_data.get('cl')
             if cl is not None:
@@ -73,23 +79,28 @@ class PartyProjectLedgerAdmin(admin.ModelAdmin):
                 totals = qs.aggregate(
                     total_received=Sum('received_amount'),
                     total_paid=Sum('paid_amount'),
+                    total_withdrawn=Sum('withdrawn_amount'),
                 )
                 response.context_data['total_received'] = totals.get('total_received') or 0
                 response.context_data['total_paid'] = totals.get('total_paid') or 0
+                response.context_data['total_withdrawn'] = totals.get('total_withdrawn') or 0
         except Exception:
             response.context_data.setdefault('total_received', 0)
             response.context_data.setdefault('total_paid', 0)
+            response.context_data.setdefault('total_withdrawn', 0)
         return response
 
 # Admin for PartyLedger with total amount display
 @admin.register(PartyLedger)
 class PartyLedgerAdmin(admin.ModelAdmin):
-    list_display = ('paid_by', 'received_by', 'amount', 'transaction_date')
+    list_display = ('paid_by', 'received_by', 'amount', 'transaction_date', 'comments')
     list_filter = ('paid_by', 'received_by', 'transaction_date')
     change_list_template = 'admin/project/partyledger/change_list.html'
-
+    rows_per_page = 20
     def changelist_view(self, request, extra_context=None):
         response = super().changelist_view(request, extra_context=extra_context)
+        if not hasattr(response, 'context_data') or response.context_data is None:
+            return response
         try:
             cl = response.context_data.get('cl')
             if cl is not None:
@@ -114,6 +125,8 @@ class SaddqahAdmin(admin.ModelAdmin):
 
     def changelist_view(self, request, extra_context=None):
         response = super().changelist_view(request, extra_context=extra_context)
+        if not hasattr(response, 'context_data') or response.context_data is None:
+            return response
         try:
             cl = response.context_data.get('cl')
             if cl is not None:
@@ -269,42 +282,93 @@ def get_admin_urls(original_get_urls):
         my_urls = [
             path('report/saddqah/', admin.site.admin_view(SaddqahReportAdminView.dashboard_view), name='saddqah_report'),
             path('report/project-ledger/', admin.site.admin_view(ProjectLedgerReportAdminView.dashboard_view), name='project_ledger_report'),
+            path('report/party-project-ledger/', admin.site.admin_view(PartyProjectLedgerReportAdminView.dashboard_view), name='party_project_ledger_report'),
         ]
         return my_urls + original_get_urls()
     return get_urls
 
 admin.site.get_urls = get_admin_urls(admin.site.get_urls)
 
-# class SaddqahReportAdminView:
-#     @staticmethod
-#     def dashboard_view(request):
-#         year = int(request.GET.get('year', datetime.datetime.now().year))
-#         saddqah_data = (
-#             Saddqah.objects.filter(transaction_date__year=year)
-#             .values('transaction_date__month')
-#             .annotate(total=Sum('amount'))
-#             .order_by('transaction_date__month')
-#         )
-#         received_data = (
-#             ProjectLedger.objects.filter(transaction_date__year=year)
-#             .values('transaction_date__month')
-#             .annotate(total=Sum('received_amount'))
-#             .order_by('transaction_date__month')
-#         )
-#         months = [datetime.date(2000, m, 1).strftime('%B') for m in range(1, 13)]
-#         saddqah_amounts = [0]*12
-#         received_amounts = [0]*12
-#         for entry in saddqah_data:
-#             saddqah_amounts[entry['transaction_date__month']-1] = float(entry['total'])
-#         for entry in received_data:
-#             received_amounts[entry['transaction_date__month']-1] = float(entry['total'])
-#         years = Saddqah.objects.dates('transaction_date', 'year').distinct()
-#         context = dict(
-#             admin.site.each_context(request),
-#             months=months,
-#             saddqah_amounts=saddqah_amounts,
-#             received_amounts=received_amounts,
-#             selected_year=year,
-#             years=[y.year for y in years],
-#         )
-#         return TemplateResponse(request, "admin/saddqah/project/dashboard.html", context)
+
+# Custom admin view for Party Project Ledger reports
+class PartyProjectLedgerReportAdminView:
+    @staticmethod
+    def dashboard_view(request):
+        year_param = request.GET.get('year', 'any')
+        project_param = request.GET.get('project', 'any')
+        party_param = request.GET.get('party', 'any')
+
+        base_qs = PartyProjectLedger.objects.all()
+        if year_param != 'any':
+            try:
+                base_qs = base_qs.filter(transaction_date__year=int(year_param))
+            except ValueError:
+                pass
+        if project_param != 'any':
+            try:
+                base_qs = base_qs.filter(project_id=int(project_param))
+            except ValueError:
+                pass
+        if party_param != 'any':
+            try:
+                base_qs = base_qs.filter(party_id=int(party_param))
+            except ValueError:
+                pass
+
+        # aggregate by year+month so we can list Year + Month rows
+        ledger_data = (
+            base_qs
+            .values('transaction_date__year', 'transaction_date__month')
+            .annotate(
+                total_received=Sum('received_amount'),
+                total_paid=Sum('paid_amount'),
+                total_withdrawn=Sum('withdrawn_amount'),
+            )
+            .order_by('transaction_date__year', 'transaction_date__month')
+        )
+
+        rows = []
+        total_received = total_paid = total_withdrawn = total_balance = 0.0
+        for entry in ledger_data:
+            y = entry['transaction_date__year']
+            m = entry['transaction_date__month']
+            month_name = datetime.date(2000, m, 1).strftime('%B')
+            rec = float(entry.get('total_received') or 0)
+            paid = float(entry.get('total_paid') or 0)
+            withdrawn = float(entry.get('total_withdrawn') or 0)
+            balance = rec - withdrawn
+            rows.append({
+                'year': y,
+                'month': month_name,
+                'received': rec,
+                'paid': paid,
+                'withdrawn': withdrawn,
+                'balance': balance,
+            })
+            total_received += rec
+            total_paid += paid
+            total_withdrawn += withdrawn
+            total_balance += balance
+
+        # values for dropdowns
+        projects = Project.objects.order_by('name')
+        parties = Party.objects.order_by('name')
+
+        years_qs = PartyProjectLedger.objects.dates('transaction_date', 'year').distinct()
+        years = [y.year for y in years_qs]
+
+        context = dict(
+            admin.site.each_context(request),
+            rows=rows,
+            total_received_all=total_received,
+            total_paid_all=total_paid,
+            total_withdrawn_all=total_withdrawn,
+            total_balance_all=total_balance,
+            selected_year=str(year_param),
+            selected_project=str(project_param),
+            selected_party=str(party_param),
+            years=years,
+            projects=projects,
+            parties=parties,
+        )
+        return TemplateResponse(request, "admin/project/partyprojectledger/report.html", context)
