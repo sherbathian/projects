@@ -2,7 +2,7 @@
 {% block content %}
 <h1>Party Project Ledger</h1>
 
-<form method="get" style="margin-bottom:20px;">
+<form method="get" style="margin-bottom:12px;">
     <label for="project">Project:</label>
     <select name="project" id="project" onchange="this.form.submit()">
         <option value="any" {% if selected_project == 'any' %}selected{% endif %}>Any</option>
@@ -26,7 +26,17 @@
             <option value="{{ y }}" {% if selected_year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
         {% endfor %}
     </select>
+
+    <label for="start_date">Start date:</label>
+    <input type="date" id="start_date" name="start_date" value="{{ start_date }}" onchange="this.form.submit()">
+
+    <label for="end_date">End date:</label>
+    <input type="date" id="end_date" name="end_date" value="{{ end_date }}" onchange="this.form.submit()">
 </form>
+
+<div style="margin-bottom:8px;">
+    <button id="exportPdf" type="button">Export PDF</button>
+</div>
 
 <table class="results">
     <thead>
@@ -105,5 +115,13 @@ new Chart(document.getElementById('receivedChart'), {
         tbody.appendChild(tr);
     });
 })();
+
+// export PDF button: navigate to export endpoint preserving query string
+document.getElementById('exportPdf').addEventListener('click', function(){
+    // current path should be e.g. /admin/report/party-project-ledger/
+    const base = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
+    const exportUrl = base + 'export_pdf/' + window.location.search;
+    window.location.href = exportUrl;
+});
 </script>
 {% endblock %}

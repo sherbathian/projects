@@ -283,6 +283,8 @@ def get_admin_urls(original_get_urls):
             path('report/saddqah/', admin.site.admin_view(SaddqahReportAdminView.dashboard_view), name='saddqah_report'),
             path('report/project-ledger/', admin.site.admin_view(ProjectLedgerReportAdminView.dashboard_view), name='project_ledger_report'),
             path('report/party-project-ledger/', admin.site.admin_view(PartyProjectLedgerReportAdminView.dashboard_view), name='party_project_ledger_report'),
+            # export endpoint for party project ledger (uses same filters as the dashboard view)
+            path('report/party-project-ledger/export_pdf/', admin.site.admin_view(PartyProjectLedgerReportAdminView.export_pdf), name='party_project_ledger_export_pdf'),
         ]
         return my_urls + original_get_urls()
     return get_urls
@@ -294,9 +296,12 @@ admin.site.get_urls = get_admin_urls(admin.site.get_urls)
 class PartyProjectLedgerReportAdminView:
     @staticmethod
     def dashboard_view(request):
+        # read filters (use 'any' as the sentinel)
         year_param = request.GET.get('year', 'any')
         project_param = request.GET.get('project', 'any')
         party_param = request.GET.get('party', 'any')
+        start_date = request.GET.get('start_date', '')  # expected YYYY-MM-DD or empty
+        end_date = request.GET.get('end_date', '')      # expected YYYY-MM-DD or empty
 
         base_qs = PartyProjectLedger.objects.all()
         if year_param != 'any':
@@ -314,6 +319,33 @@ class PartyProjectLedgerReportAdminView:
                 base_qs = base_qs.filter(party_id=int(party_param))
             except ValueError:
                 pass
+
+        # apply start/end date filters if provided (expecting YYYY-MM-DD)
+        # use __date lookup for DateTimeField, direct compare for DateField
+        try:
+            field_type = PartyProjectLedger._meta.get_field('transaction_date').get_internal_type()
+            is_datetime = field_type == 'DateTimeField'
+        except Exception:
+            is_datetime = True  # conservative default
+
+        try:
+            if start_date:
+                sd = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+                if is_datetime:
+                    base_qs = base_qs.filter(transaction_date__date__gte=sd)
+                else:
+                    base_qs = base_qs.filter(transaction_date__gte=sd)
+        except Exception:
+            pass
+        try:
+            if end_date:
+                ed = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
+                if is_datetime:
+                    base_qs = base_qs.filter(transaction_date__date__lte=ed)
+                else:
+                    base_qs = base_qs.filter(transaction_date__lte=ed)
+        except Exception:
+            pass
 
         # aggregate by year+month so we can list Year + Month rows
         ledger_data = (
@@ -370,5 +402,127 @@ class PartyProjectLedgerReportAdminView:
             years=years,
             projects=projects,
             parties=parties,
+            start_date=start_date,
+            end_date=end_date,
         )
         return TemplateResponse(request, "admin/project/partyprojectledger/report.html", context)
+
+    @staticmethod
+    def export_pdf(request):
+        """Export the currently filtered report rows as a simple PDF."""
+        # Reuse same filtering logic as dashboard_view
+        year_param = request.GET.get('year', 'any')
+        project_param = request.GET.get('project', 'any')
+        party_param = request.GET.get('party', 'any')
+        start_date = request.GET.get('start_date', '')
+        end_date = request.GET.get('end_date', '')
+
+        base_qs = PartyProjectLedger.objects.all()
+        if year_param != 'any':
+            try:
+                base_qs = base_qs.filter(transaction_date__year=int(year_param))
+            except ValueError:
+                pass
+        if project_param != 'any':
+            try:
+                base_qs = base_qs.filter(project_id=int(project_param))
+            except ValueError:
+                pass
+        if party_param != 'any':
+            try:
+                base_qs = base_qs.filter(party_id=int(party_param))
+            except ValueError:
+                pass
+
+        # apply start/end date filters if provided (expecting YYYY-MM-DD)
+        # use __date lookup for DateTimeField, direct compare for DateField
+        try:
+            field_type = PartyProjectLedger._meta.get_field('transaction_date').get_internal_type()
+            is_datetime = field_type == 'DateTimeField'
+        except Exception:
+            is_datetime = True  # conservative default
+
+        try:
+            if start_date:
+                sd = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+                if is_datetime:
+                    base_qs = base_qs.filter(transaction_date__date__gte=sd)
+                else:
+                    base_qs = base_qs.filter(transaction_date__gte=sd)
+        except Exception:
+            pass
+        try:
+            if end_date:
+                ed = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
+                if is_datetime:
+                    base_qs = base_qs.filter(transaction_date__date__lte=ed)
+                else:
+                    base_qs = base_qs.filter(transaction_date__lte=ed)
+        except Exception:
+            pass
+
+        ledger_data = (
+            base_qs
+            .values('transaction_date__year', 'transaction_date__month')
+            .annotate(
+                total_received=Sum('received_amount'),
+                total_paid=Sum('paid_amount'),
+                total_withdrawn=Sum('withdrawn_amount'),
+            )
+            .order_by('transaction_date__year', 'transaction_date__month')
+        )
+
+        rows = []
+        total_received = total_paid = total_withdrawn = total_balance = 0.0
+        for entry in ledger_data:
+            y = entry['transaction_date__year']
+            m = entry['transaction_date__month']
+            month_name = datetime.date(2000, m, 1).strftime('%B')
+            rec = float(entry.get('total_received') or 0)
+            paid = float(entry.get('total_paid') or 0)
+            withdrawn = float(entry.get('total_withdrawn') or 0)
+            balance = rec - withdrawn
+            rows.append([str(y), month_name, f"{rec:.2f}", f"{paid:.2f}", f"{withdrawn:.2f}", f"{balance:.2f}"])
+            total_received += rec
+            total_paid += paid
+            total_withdrawn += withdrawn
+            total_balance += balance
+
+        # build PDF
+        try:
+            from reportlab.lib.pagesizes import letter
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            from reportlab.lib import colors
+            from reportlab.lib.styles import getSampleStyleSheet
+        except ImportError:
+            messages.error(request, "reportlab is required to export PDF. Install with: pip install reportlab")
+            return HttpResponse("reportlab required", status=400)
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        styles = getSampleStyleSheet()
+        elements = []
+        title = Paragraph("Party Project Ledger Export", styles['Title'])
+        elements.append(title)
+        elements.append(Spacer(1, 12))
+
+        data = [['Year', 'Month', 'Received', 'Paid', 'Withdrawn', 'Balance']]
+        data.extend(rows)
+        # totals row
+        data.append(['', 'Totals:', f"{total_received:.2f}", f"{total_paid:.2f}", f"{total_withdrawn:.2f}", f"{total_balance:.2f}"])
+
+        table = Table(data, repeatRows=1, hAlign='LEFT', colWidths=[60, 100, 80, 80, 80, 80])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f0f0f0')),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+            ('ALIGN', (2,1), (-1,-1), 'RIGHT'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTNAME', (0,-1), (1,-1), 'Helvetica-Bold'),
+        ]))
+        elements.append(table)
+        doc.build(elements)
+        buffer.seek(0)
+        resp = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        resp['Content-Disposition'] = 'attachment; filename="party_project_ledger_export.pdf"'
+        return resp
