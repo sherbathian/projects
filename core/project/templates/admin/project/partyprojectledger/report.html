@@ -1,13 +1,6 @@
 {% extends "admin/base_site.html" %}
 {% block content %}
 <h1>Party Project Ledger</h1>
-
-<p>
-    <strong>Project:</strong> {{ selected_project_name }} &nbsp; | &nbsp;
-    <strong>Party:</strong> {{ selected_party_name }} &nbsp; | &nbsp;
-    <strong>Year:</strong> {{ selected_year_label }}{% if start_date or end_date %} &nbsp; | &nbsp; <strong>Date Range:</strong> {{ start_date|default:"Any" }} - {{ end_date|default:"Any" }}{% endif %}
-</p>
-
 <form method="get" style="margin-bottom:12px;">
     <label for="project">Project:</label>
     <select name="project" id="project" onchange="this.form.submit()">
@@ -39,11 +32,14 @@
     <label for="end_date">End date:</label>
     <input type="date" id="end_date" name="end_date" value="{{ end_date }}" onchange="this.form.submit()">
 </form>
-
 <div style="margin-bottom:8px;">
     <button id="exportPdf" type="button">Export PDF</button>
 </div>
-
+<p>
+    <strong>Project:</strong> {{ selected_project_name }} &nbsp; | &nbsp;
+    <strong>Party:</strong> {{ selected_party_name }} &nbsp; | &nbsp;
+    <strong>Year:</strong> {{ selected_year_label }}{% if start_date or end_date %} &nbsp; | &nbsp; <strong>Date Range:</strong> {{ start_date|default:"Any" }} - {{ end_date|default:"Any" }}{% endif %}
+</p>
 <table class="results">
     <thead>
         <tr>
@@ -68,7 +64,11 @@
         </tr>
     </tfoot>
 </table>
-
+<p>
+    <strong>Project:</strong> {{ selected_project_name }} &nbsp; | &nbsp;
+    <strong>Party:</strong> {{ selected_party_name }} &nbsp; | &nbsp;
+    <strong>Year:</strong> {{ selected_year_label }}{% if start_date or end_date %} &nbsp; | &nbsp; <strong>Date Range:</strong> {{ start_date|default:"Any" }} - {{ end_date|default:"Any" }}{% endif %}
+</p>
 <div style="width:100%;max-width:900px;margin-top:40px;">
     <canvas id="receivedChart"></canvas>
 </div>
