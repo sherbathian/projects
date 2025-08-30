@@ -2,6 +2,12 @@
 {% block content %}
 <h1>Party Project Ledger</h1>
 
+<p>
+    <strong>Project:</strong> {{ selected_project_name }} &nbsp; | &nbsp;
+    <strong>Party:</strong> {{ selected_party_name }} &nbsp; | &nbsp;
+    <strong>Year:</strong> {{ selected_year_label }}{% if start_date or end_date %} &nbsp; | &nbsp; <strong>Date Range:</strong> {{ start_date|default:"Any" }} - {{ end_date|default:"Any" }}{% endif %}
+</p>
+
 <form method="get" style="margin-bottom:12px;">
     <label for="project">Project:</label>
     <select name="project" id="project" onchange="this.form.submit()">

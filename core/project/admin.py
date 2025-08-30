@@ -560,6 +560,23 @@ class PartyProjectLedgerReportAdminView:
         years_qs = PartyProjectLedger.objects.dates('transaction_date', 'year').distinct()
         years = [y.year for y in years_qs]
 
+        # resolve selected names (for heading and PDF)
+        selected_project_name = "Any"
+        if project_param != 'any':
+            try:
+                selected_project_name = Project.objects.get(pk=int(project_param)).name
+            except Exception:
+                selected_project_name = "Unknown"
+
+        selected_party_name = "Any"
+        if party_param != 'any':
+            try:
+                selected_party_name = Party.objects.get(pk=int(party_param)).name
+            except Exception:
+                selected_party_name = "Unknown"
+
+        selected_year_label = str(year_param) if year_param != 'any' else "Any"
+
         context = dict(
             admin.site.each_context(request),
             rows=rows,
@@ -575,6 +592,10 @@ class PartyProjectLedgerReportAdminView:
             parties=parties,
             start_date=start_date,
             end_date=end_date,
+            # new context items for display
+            selected_project_name=selected_project_name,
+            selected_party_name=selected_party_name,
+            selected_year_label=selected_year_label,
         )
         return TemplateResponse(request, "admin/project/partyprojectledger/report.html", context)
 
@@ -659,6 +680,23 @@ class PartyProjectLedgerReportAdminView:
             total_withdrawn += withdrawn
             total_balance += balance
 
+        # resolve selected names for PDF header
+        selected_project_name = "Any"
+        if project_param != 'any':
+            try:
+                selected_project_name = Project.objects.get(pk=int(project_param)).name
+            except Exception:
+                selected_project_name = "Unknown"
+
+        selected_party_name = "Any"
+        if party_param != 'any':
+            try:
+                selected_party_name = Party.objects.get(pk=int(party_param)).name
+            except Exception:
+                selected_party_name = "Unknown"
+
+        selected_year_label = str(year_param) if year_param != 'any' else "Any"
+
         # build PDF
         try:
             from reportlab.lib.pagesizes import letter
@@ -675,6 +713,14 @@ class PartyProjectLedgerReportAdminView:
         elements = []
         title = Paragraph("Party Project Ledger Export", styles['Title'])
         elements.append(title)
+
+        # add filter summary
+        filter_line = f"Project: {selected_project_name}    Party: {selected_party_name}    Year: {selected_year_label}"
+        if start_date or end_date:
+            filter_line += "    Date Range: "
+            filter_line += f"{start_date or 'Any'} - {end_date or 'Any'}"
+        elements.append(Spacer(1, 6))
+        elements.append(Paragraph(filter_line, styles['Normal']))
         elements.append(Spacer(1, 12))
 
         data = [['Year', 'Month', 'Received', 'Paid', 'Withdrawn', 'Balance']]
@@ -695,5 +741,9 @@ class PartyProjectLedgerReportAdminView:
         doc.build(elements)
         buffer.seek(0)
         resp = HttpResponse(buffer.getvalue(), content_type='application/pdf')
-        resp['Content-Disposition'] = 'attachment; filename="party_project_ledger_export.pdf"'
+        # include project/party/year in filename (basic safe fallback)
+        safe_project = selected_project_name.replace(' ', '_') if selected_project_name else 'Any'
+        safe_party = selected_party_name.replace(' ', '_') if selected_party_name else 'Any'
+        filename = f"party_project_ledger_{safe_project}_{safe_party}_{selected_year_label}.pdf"
+        resp['Content-Disposition'] = f'attachment; filename="{filename}"'
         return resp
