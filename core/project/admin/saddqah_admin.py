@@ -4,11 +4,20 @@ from django.contrib import admin, messages
 from django.db.models import Sum
 from django.http import HttpResponse
 from project.models import Saddqah
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin, ExportActionMixin
+
+class SaddqahResource(resources.ModelResource):
+
+    class Meta:
+        fields = ('party__name', 'amount', 'name', 'category', 'transaction_date')
+        model = Saddqah
 
 
 # Admin for Saddqah with export functionality
 @admin.register(Saddqah)
-class SaddqahAdmin(admin.ModelAdmin):
+class SaddqahAdmin(ExportActionMixin, ImportExportModelAdmin):
+    resource_class = SaddqahResource
     list_display = ('party', 'amount', 'name', 'category', 'transaction_date')
     list_filter = ('party', 'category', 'transaction_date')
     search_fields = ('party__name', 'name')

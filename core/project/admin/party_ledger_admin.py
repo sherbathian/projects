@@ -1,10 +1,20 @@
 from django.contrib import admin
 from django.db.models import Sum
 from project.models import PartyLedger
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin, ExportActionMixin
+
+class PartyLedgerResource(resources.ModelResource):
+
+    class Meta:
+        fields = ('paid_by__name', 'received_by__name', 'amount', 'transaction_date', 'comments')
+        model = PartyLedger
+
 
 # Admin for PartyLedger with total amount display
 @admin.register(PartyLedger)
-class PartyLedgerAdmin(admin.ModelAdmin):
+class PartyLedgerAdmin(ExportActionMixin, ImportExportModelAdmin):
+    resource_class = PartyLedgerResource
     list_display = ('paid_by', 'received_by', 'amount', 'transaction_date', 'comments')
     list_filter = ('paid_by', 'received_by', 'transaction_date')
     change_list_template = 'admin/project/partyledger/change_list.html'

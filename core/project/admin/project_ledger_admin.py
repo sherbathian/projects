@@ -1,10 +1,18 @@
 from django.contrib import admin
 from project.models import ProjectLedger
 from django.db.models import Sum
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin, ExportActionMixin
+
+class ProjectLedgerResource(resources.ModelResource):
+    class Meta:
+        fields = ('project__name', 'paid_amount', 'received_amount', 'transaction_date', 'comments')
+        model = ProjectLedger
 
 # Admin for ProjectLedger with total amount display
 @admin.register(ProjectLedger)
-class ProjectLedgerAdmin(admin.ModelAdmin):
+class ProjectLedgerAdmin(ExportActionMixin, ImportExportModelAdmin):
+    resource_class = ProjectLedgerResource
     list_display = ('project', 'paid_amount', 'received_amount', 'transaction_date', 'comments')
     list_filter = ('project', 'transaction_date')
     change_list_template = 'admin/project/projectledger/change_list.html'

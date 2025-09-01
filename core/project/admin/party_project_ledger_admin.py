@@ -1,10 +1,21 @@
 from django.contrib import admin
 from django.db.models import Sum
 from project.models import PartyProjectLedger
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin, ExportActionMixin
 
+
+class PartyProjectLedgerResource(resources.ModelResource):
+
+    class Meta:
+        fields = ('party__name', 'project__name', 'paid_amount', 'received_amount', 'withdrawn_amount', 'transaction_date', 'comments')
+        model = PartyProjectLedger
+         
 # Admin for PartyProjectLedger with total amount display
 @admin.register(PartyProjectLedger)
-class PartyProjectLedgerAdmin(admin.ModelAdmin):
+class PartyProjectLedgerAdmin(ExportActionMixin, ImportExportModelAdmin):
+    
+    resource_class = PartyProjectLedgerResource
     list_display = ('party', 'project', 'paid_amount', 'received_amount', 'withdrawn_amount', 'transaction_date', 'comments')
     list_filter = ('party', 'project', 'transaction_date')
     list_per_page = 20
@@ -33,3 +44,4 @@ class PartyProjectLedgerAdmin(admin.ModelAdmin):
             response.context_data.setdefault('total_paid', 0)
             response.context_data.setdefault('total_withdrawn', 0)
         return response
+
