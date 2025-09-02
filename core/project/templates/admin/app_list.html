@@ -3,9 +3,12 @@
     <div class="module" id="saddqah-dashboard-link-legacy">
     <h2>{% trans "Reports" %}</h2>
     <ul class="nav nav-pills nav-stacked" style="margin-left: 6px;">
+      <li style="list-style: none;"><a href="{% url 'admin:party_balance_report' %}">{% trans "Party Balance" %}</a></li>
       <li style="list-style: none;"><a href="{% url 'admin:saddqah_report' %}">{% trans "Saddqah" %}</a></li>
       <li style="list-style: none;"><a href="{% url 'admin:project_ledger_report' %}">{% trans "Project Ledger" %}</a></li>
       <li style="list-style: none;"><a href="{% url 'admin:party_project_ledger_report' %}">{% trans "Party Project Ledger" %}</a></li>
+      <li style="list-style: none;"><a href="{% url 'admin:party_ledger_report' %}">{% trans "Party Ledger" %}</a></li>
+
     </ul>
   </div>
 {% if app_list %}

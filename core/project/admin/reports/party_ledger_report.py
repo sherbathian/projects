@@ -1,44 +1,37 @@
 from django.contrib import admin
 from django.db.models import Sum
 from django.template.response import TemplateResponse
-import datetime
-from project.models import Saddqah
 from django.http import HttpResponse
 from django.contrib import messages
+import datetime
 import io
+import json
+
+from project.models import PartyLedger, Party  # adjust if your model names differ
 
 
-# Custom admin view for Saddqah reports
-class SaddqahReportAdminView:
+class PartyLedgerReportAdminView:
     @staticmethod
     def dashboard_view(request):
-        
-        # Filters
+        # filters
+        year_param = request.GET.get('year', 'any')
         start_date = request.GET.get('start_date', '')
         end_date = request.GET.get('end_date', '')
-        year_param = request.GET.get('year', 'any')
-        
-        year = int(request.GET.get('year', datetime.datetime.now().year))
-        # saddqah_data = (
-        #     Saddqah.objects.filter(transaction_date__year=year)
-        #     .values('transaction_date__month')
-        #     .annotate(total=Sum('amount'))
-        #     .order_by('transaction_date__month')
-        # )
-        base_qs = Saddqah.objects.all()
-        
+
+        base_qs = PartyLedger.objects.all()
         if year_param != 'any':
             try:
                 base_qs = base_qs.filter(transaction_date__year=int(year_param))
-            except ValueError:
+            except Exception:
                 pass
-        
+
+        # detect whether transaction_date is DateTimeField to use __date lookup
         try:
-            field_type = Saddqah._meta.get_field('transaction_date').get_internal_type()
+            field_type = PartyLedger._meta.get_field('transaction_date').get_internal_type()
             is_datetime = field_type == 'DateTimeField'
         except Exception:
             is_datetime = True
-            
+
         try:
             if start_date:
                 sd = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
@@ -48,7 +41,7 @@ class SaddqahReportAdminView:
                     base_qs = base_qs.filter(transaction_date__gte=sd)
         except Exception:
             pass
-        
+
         try:
             if end_date:
                 ed = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
@@ -58,64 +51,56 @@ class SaddqahReportAdminView:
                     base_qs = base_qs.filter(transaction_date__lte=ed)
         except Exception:
             pass
-        
-                # aggregate by year+month
-        ledger_data = (
+
+        # aggregate by paid_by & received_by
+        aggregated = (
             base_qs
-            .values('transaction_date__year', 'transaction_date__month')
-            .annotate(
-                total_amount=Sum('amount'),
-            )
-            .order_by('transaction_date__year', 'transaction_date__month')
+            .values('paid_by__name', 'received_by__name')
+            .annotate(total_amount=Sum('amount'))
+            .order_by('-total_amount')
         )
-        
+
         rows = []
-        total_amount = 0.0
-        for entry in ledger_data:
-            y = entry['transaction_date__year']
-            m = entry['transaction_date__month']
-            month_name = datetime.date(2000, m, 1).strftime('%B')
-            amount = float(entry.get('total_amount') or 0)
-            rows.append({
-                'year': y,
-                'month': month_name,
-                'amount': amount,
-            })
-            total_amount += amount
-        
-        # dropdowns for years
-        years_qs = Saddqah.objects.dates('transaction_date', 'year').distinct()
+        total_amount_all = 0.0
+        for entry in aggregated:
+            payer = entry.get('paid_by__name') or 'Unknown'
+            receiver = entry.get('received_by__name') or 'Unknown'
+            amt = float(entry.get('total_amount') or 0)
+            rows.append({'paid_by': payer, 'received_by': receiver, 'amount': amt})
+            total_amount_all += amt
+
+        # years dropdown
+        years_qs = PartyLedger.objects.dates('transaction_date', 'year').distinct()
         years = [y.year for y in years_qs]
-        
 
         context = dict(
             admin.site.each_context(request),
             rows=rows,
+            rows_json=json.dumps(rows),
+            total_amount_all=total_amount_all,
             years=years,
-            total_amount=total_amount,
             selected_year=str(year_param),
             start_date=start_date,
             end_date=end_date,
         )
-        return TemplateResponse(request, "admin/project/saddqah/report.html", context)
+        return TemplateResponse(request, "admin/project/partyledger/report.html", context)
 
     @staticmethod
     def export_pdf(request):
-        """Export aggregated Saddqah rows (filtered) as PDF."""
+        # same filtering logic as dashboard_view
+        year_param = request.GET.get('year', 'any')
         start_date = request.GET.get('start_date', '')
         end_date = request.GET.get('end_date', '')
-        year_param = request.GET.get('year', 'any')
 
-        base_qs = Saddqah.objects.all()
-        
+        base_qs = PartyLedger.objects.all()
         if year_param != 'any':
             try:
                 base_qs = base_qs.filter(transaction_date__year=int(year_param))
-            except ValueError:
+            except Exception:
                 pass
 
         try:
-            field_type = Saddqah._meta.get_field('transaction_date').get_internal_type()
+            field_type = PartyLedger._meta.get_field('transaction_date').get_internal_type()
             is_datetime = field_type == 'DateTimeField'
         except Exception:
             is_datetime = True
@@ -139,25 +124,23 @@ class SaddqahReportAdminView:
         except Exception:
             pass
 
-        ledger_data = (
+        aggregated = (
             base_qs
-            .values('transaction_date__year', 'transaction_date__month')
-            .annotate(
-                total_amount=Sum('amount'),
-            )
-            .order_by('transaction_date__year', 'transaction_date__month')
+            .values('paid_by__name', 'received_by__name')
+            .annotate(total_amount=Sum('amount'))
+            .order_by('-total_amount')
         )
 
         rows = []
-        total_amount = total_paid = total_balance = 0.0
-        for entry in ledger_data:
-            y = entry['transaction_date__year']
-            m = entry['transaction_date__month']
-            month_name = datetime.date(2000, m, 1).strftime('%B')
-            rec = float(entry.get('total_amount') or 0)
-            rows.append([str(y), month_name, f"{rec:.2f}"])
-            total_amount += rec
+        total_amount_all = 0.0
+        for entry in aggregated:
+            payer = entry.get('paid_by__name') or 'Unknown'
+            receiver = entry.get('received_by__name') or 'Unknown'
+            amt = float(entry.get('total_amount') or 0)
+            rows.append([payer, receiver, f"{amt:.2f}"])
+            total_amount_all += amt
 
+        # build PDF
         try:
             from reportlab.lib.pagesizes import letter
             from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -171,19 +154,22 @@ class SaddqahReportAdminView:
         doc = SimpleDocTemplate(buffer, pagesize=letter)
         styles = getSampleStyleSheet()
         elements = []
-        title = Paragraph("Saddqah Export", styles['Title'])
-        elements.append(title)
+        elements.append(Paragraph("Party Ledger - Paid by / Received by", styles['Title']))
+        elements.append(Spacer(1, 6))
+        filter_line = f"Year: {year_param if year_param!='any' else 'Any'}"
+        if start_date or end_date:
+            filter_line += f"    Date Range: {start_date or 'Any'} - {end_date or 'Any'}"
+        elements.append(Paragraph(filter_line, styles['Normal']))
         elements.append(Spacer(1, 12))
 
-        data = [['Year', 'Month', 'Amount']]
+        data = [['Paid by', 'Received by', 'Total Amount']]
         data.extend(rows)
-        data.append(['', 'Totals:', f"{total_amount:.2f}"])
 
-        table = Table(data, repeatRows=1, hAlign='LEFT', colWidths=[60, 120, 80, 80, 80])
+        table = Table(data, repeatRows=1, hAlign='LEFT', colWidths=[160, 160, 100])
         table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f0f0f0')),
             ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-            ('ALIGN', (2,1), (-1,-1), 'RIGHT'),
+            ('ALIGN', (2,1), (2,-1), 'RIGHT'),
             ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
             ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
             ('FONTNAME', (0,-1), (1,-1), 'Helvetica-Bold'),
@@ -192,7 +178,5 @@ class SaddqahReportAdminView:
         doc.build(elements)
         buffer.seek(0)
         resp = HttpResponse(buffer.getvalue(), content_type='application/pdf')
-        resp['Content-Disposition'] = 'attachment; filename="project_ledger_export.pdf"'
+        resp['Content-Disposition'] = 'attachment; filename="party_ledger_paid_received.pdf"'
         return resp
-
-

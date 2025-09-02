@@ -1,0 +1,74 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1>Party Balances</h1>
+
+<form method="get" style="margin-bottom:12px;">
+    <label for="start_date">Start date:</label>
+    <input type="date" id="start_date" name="start_date" value="{{ start_date }}" onchange="this.form.submit()">
+
+    <label for="end_date">End date:</label>
+    <input type="date" id="end_date" name="end_date" value="{{ end_date }}" onchange="this.form.submit()">
+</form>
+
+<div style="margin-bottom:8px;">
+    <button id="exportPdf" type="button">Export PDF</button>
+</div>
+
+<table class="results">
+    <thead>
+        <tr>
+            <th>Party</th>
+            <th style="text-align:right;">Total Received</th>
+            <th style="text-align:right;">Total Withdrawn</th>
+            <th style="text-align:right;">Balance</th>
+        </tr>
+    </thead>
+    <tbody id="ledgerBody"></tbody>
+    <tfoot>
+        <tr>
+            <th style="text-align:right;">Totals:</th>
+            <th id="totalReceived" style="text-align:right;">{{ total_received_all }}</th>
+            <th id="totalWithdrawn" style="text-align:right;">{{ total_withdrawn_all }}</th>
+            <th id="totalBalance" style="text-align:right;">{{ total_balance_all }}</th>
+        </tr>
+    </tfoot>
+</table>
+
+<div style="width:100%;max-width:900px;margin-top:20px;">
+    <canvas id="balanceChart"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const rows = {{ rows_json|safe }};
+
+(function populateTable(){
+    const tbody = document.getElementById('ledgerBody');
+    tbody.innerHTML = '';
+    rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.party_name}</td><td style="text-align:right;">${r.received.toFixed(2)}</td><td style="text-align:right;">${r.withdrawn.toFixed(2)}</td><td style="text-align:right;">${r.balance.toFixed(2)}</td>`;
+        tbody.appendChild(tr);
+    });
+})();
+
+document.getElementById('exportPdf').addEventListener('click', function(){
+    const base = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
+    const exportUrl = base + 'export_pdf/' + window.location.search;
+    window.location.href = exportUrl;
+});
+
+new Chart(document.getElementById('balanceChart'), {
+    type: 'bar',
+    data: {
+        labels: rows.map(r => r.party_name),
+        datasets: [
+            { label: 'Received', data: rows.map(r => r.received), backgroundColor: 'rgba(75,192,192,0.6)' },
+            { label: 'Withdrawn', data: rows.map(r => r.withdrawn), backgroundColor: 'rgba(255,99,132,0.6)' },
+            { label: 'Balance', data: rows.map(r => r.balance), backgroundColor: 'rgba(153,102,255,0.6)' },
+        ]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+});
+</script>
+{% endblock %}
