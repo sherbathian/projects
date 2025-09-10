@@ -10,6 +10,14 @@ from django import forms
 from django.urls import path
 from django.shortcuts import render, redirect
 
+
+try:
+    # import the module that performs admin.site.get_urls = get_admin_urls(...)
+    from .reports import get_admin_urls  # noqa: F401
+except Exception:
+    # keep admin usable even if reports import fails
+    pass
+
 # Admin for Party
 
 class NeedyResource(resources.ModelResource):
@@ -61,17 +69,42 @@ class GeneratePaymentsForm(forms.Form):
         label="Year"
     )
 
+class MonthNameListFilter(admin.SimpleListFilter):
+    title = 'Month'
+    parameter_name = 'month'
+    template = 'admin/select_filter.html'  # Use select box for filter
+
+    def lookups(self, request, model_admin):
+        import calendar
+        return [(i, calendar.month_name[i]) for i in range(1, 13)]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(month=int(self.value()))
+        return queryset
+
+class YearListFilter(admin.SimpleListFilter):
+    title = 'Year'
+    parameter_name = 'year'
+    template = 'admin/select_filter.html'  # Use select box
+
+    def lookups(self, request, model_admin):
+        years = Payment.objects.values_list('year', flat=True).distinct().order_by('-year')
+        return [(year, year) for year in years if year]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(year=int(self.value()))
+        return queryset
+
 @admin.register(Payment)
 class PaymentAdmin(ImportExportModelAdmin, ExportActionMixin):
-    list_display = ('needy', 'amount', 'payment_date', 'year', 'month_name', 'status')
-    list_filter = ( 'status', 'payment_date', 'year', 'month')
+    list_display = ('needy', 'amount', 'payment_date', 'status')
+    list_filter = ( 'status', 'payment_date', YearListFilter, MonthNameListFilter)
     search_fields = ('needy__name',)
     ordering = ('-payment_date', 'year', 'month',)   
-    
-    def month_name(self, obj):
-        return obj.get_month_name()
-    month_name.short_description = 'Month'
-     
+    list_editable = ('status',)
+    list_per_page = 20
     actions = ['mark_as_paid', 'mark_as_pending']
     
     def mark_as_paid(self, request, queryset):
@@ -208,3 +241,9 @@ class BankAdmin(ImportExportModelAdmin, ExportActionMixin):
             response.context_data.setdefault('total_amount', 0)
         return response
   
+  # ensure admin report URLs are registered
+
+
+admin.site.site_header = "Donation Admin"
+admin.site.site_title = "Donation Admin"
+admin.site.index_title = "Welcome to the Donation Admin"    

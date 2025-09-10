@@ -1,0 +1,14 @@
+{% load i18n %}
+<script>
+  function applyFilter(select) {
+    window.location.href = select.options[select.selectedIndex].dataset.qs;
+  }
+</script>
+<h3>{{ title }}</h3>
+<select onchange="applyFilter(this)">
+  {% for choice in choices %}
+  <option data-qs="{{ choice.query_string }}" {% if choice.selected %}selected{% endif %}>
+    {{ choice.display }}
+  </option>
+  {% endfor %}
+</select>

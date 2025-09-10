@@ -22,3 +22,7 @@ class ProjectAdmin(ExportActionMixin, ImportExportModelAdmin):
     # from import_export.formats import base_formats
     # def get_import_formats(self):
     #     return [f() for f in (base_formats.CSV,
+
+admin.site.site_header = "Project Admin"
+admin.site.site_title = "Project Admin"
+admin.site.index_title = "Welcome to the Project Admin"   

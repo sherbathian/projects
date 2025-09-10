@@ -18,17 +18,17 @@
     <input type="hidden" name="year" value="{{ year }}">
     <input type="hidden" name="confirm" value="1">
 
-    <p>{% blocktranslate %}You are about to generate <strong>{{ needers_to_pay|length }}</strong> new payment(s) for <strong>{{ month_name }} {{ year }}</strong>.{% endblocktranslate %}</p>
+    <p>{% blocktranslate %}You are about to generate <strong>{{ needyers_to_pay|length }}</strong> new payment(s) for <strong>{{ month_name }} {{ year }}</strong>.{% endblocktranslate %}</p>
 
-    {% if needers_to_pay %}
+    {% if needyers_to_pay %}
       <h2>{% translate "Payments will be created for:" %}</h2>
-      <ul>{% for needer in needers_to_pay %}<li>{{ needer.name }} ({{ needer.amount }})</li>{% endfor %}</ul>
+      <ul>{% for needyer in needyers_to_pay %}<li>{{ needyer.name }} ({{ needyer.amount }})</li>{% endfor %}</ul>
     {% endif %}
 
-    {% if needers_with_existing_payment %}
+    {% if needyers_with_existing_payment %}
       <h2>{% translate "Payments already exist for:" %}</h2>
       <p>{% translate "No new payments will be created for these needers for this period." %}</p>
-      <ul>{% for needer in needers_with_existing_payment %}<li>{{ needer.name }}</li>{% endfor %}</ul>
+      <ul>{% for needyer in needyers_with_existing_payment %}<li>{{ needyer.name }}</li>{% endfor %}</ul>
     {% endif %}
 
     <div class="submit-row">
