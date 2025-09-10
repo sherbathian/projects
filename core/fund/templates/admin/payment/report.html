@@ -1,6 +1,13 @@
 {% extends "admin/base_site.html" %}
 {% block content %}
 <h1>Payment Reports</h1>
+
+<p>
+  <strong>Selected Filters:</strong>
+  Year: {{ selected_year|default:"Any" }} &nbsp;|&nbsp;
+  Needy: {{ selected_needy_name|default:"Any" }} {% if start_date or end_date %}&nbsp;|&nbsp; Date Range: {{ start_date|default:"Any" }} - {{ end_date|default:"Any" }}{% endif %}
+</p>
+
 <form method="get" style="margin-bottom:20px;">
     <label for="year">Year:</label>
     <select name="year" id="year" onchange="this.form.submit()">
@@ -9,12 +16,22 @@
             <option value="{{ y }}" {% if selected_year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
         {% endfor %}
     </select>
+
+    <label for="needy">Needy:</label>
+    <select name="needy" id="needy" onchange="this.form.submit()">
+        <option value="any" {% if selected_needy == 'any' %}selected{% endif %}>Any</option>
+        {% for n in needies %}
+            <option value="{{ n.id }}" {% if selected_needy == n.id|stringformat:"s" %}selected{% endif %}>{{ n.name }}</option>
+        {% endfor %}
+    </select>
+
     <label for="start_date">Start date:</label>
     <input type="date" id="start_date" name="start_date" value="{{ start_date }}" onchange="this.form.submit()">
 
     <label for="end_date">End date:</label>
     <input type="date" id="end_date" name="end_date" value="{{ end_date }}" onchange="this.form.submit()">
 </form>
+
 <div style="margin-bottom:8px;">
     <button id="exportPdf" type="button">Export PDF</button>
 </div>
@@ -33,7 +50,7 @@
     <tfoot>
         <tr>
             <th colspan="2" style="text-align:right;">Totals:</th>
-            <th id="totalAmount">{{ total_Amount }}</th>
+            <th id="totalAmount">{{ total_amount }}</th>
         </tr>
     </tfoot>
 </table>
@@ -71,7 +88,7 @@ new Chart(document.getElementById('saddqahChart'), {
     tbody.innerHTML = '';
     rows.forEach(r => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.year}</td><td>${r.month}</td><td>${r.amount}</td>`;
+        tr.innerHTML = `<td>${r.year}</td><td>${r.month}</td><td style="text-align:right;">${r.amount}</td>`;
         tbody.appendChild(tr);
     });
 })();
