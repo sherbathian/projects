@@ -1,0 +1,27 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+  <div id="content-main">
+    <form method="post">
+      {% csrf_token %}
+      <div>
+        <fieldset class="module aligned">
+          <h2>{% translate "Generate Monthly Payments" %}</h2>
+          <p>{% translate "Select the month and year for which to generate pending payments for all active, monthly needers." %}</p>
+          <div class="form-row">
+            {{ form.month.errors }}
+            <label class="required" for="{{ form.month.id_for_label }}">{{ form.month.label }}:</label> {{ form.month }}
+          </div>
+          <div class="form-row">
+            {{ form.year.errors }}
+            <label class="required" for="{{ form.year.id_for_label }}">{{ form.year.label }}:</label> {{ form.year }}
+          </div>
+        </fieldset>
+        <div class="submit-row">
+          <input type="submit" value="{% translate 'Proceed to Confirmation' %}" class="default">
+        </div>
+      </div>
+    </form>
+  </div>
+{% endblock %}

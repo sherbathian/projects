@@ -1,0 +1,40 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_label|capfirst }}</a>
+&rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; {% translate 'Generate monthly payments' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="month" value="{{ month }}">
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="confirm" value="1">
+
+    <p>{% blocktranslate %}You are about to generate <strong>{{ needers_to_pay|length }}</strong> new payment(s) for <strong>{{ month_name }} {{ year }}</strong>.{% endblocktranslate %}</p>
+
+    {% if needers_to_pay %}
+      <h2>{% translate "Payments will be created for:" %}</h2>
+      <ul>{% for needer in needers_to_pay %}<li>{{ needer.name }} ({{ needer.amount }})</li>{% endfor %}</ul>
+    {% endif %}
+
+    {% if needers_with_existing_payment %}
+      <h2>{% translate "Payments already exist for:" %}</h2>
+      <p>{% translate "No new payments will be created for these needers for this period." %}</p>
+      <ul>{% for needer in needers_with_existing_payment %}<li>{{ needer.name }}</li>{% endfor %}</ul>
+    {% endif %}
+
+    <div class="submit-row">
+        <input type="submit" value="{% translate 'Confirm Generation' %}" class="default">
+        <a href="{% url 'admin:fund_payment_changelist' %}" class="button cancel-link">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
