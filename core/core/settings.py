@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'project.apps.ProjectConfig', 
     'import_export',
     'fund.apps.FundConfig', 
+    'hotel.apps.HotelConfig',
 ]
 
 MIDDLEWARE = [

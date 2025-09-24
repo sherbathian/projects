@@ -40,7 +40,7 @@ class Shop(models.Model):
     shop_no = models.CharField(max_length=10)
     added_by = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='empty')
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     detail = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -55,7 +55,7 @@ class Shop(models.Model):
 class ShopDetail(models.Model):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='details')
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
-    partner = models.ForeignKey(Partner, on_delete=models.CASCADE)
+    # partner = models.ForeignKey(Partner, on_delete=models.CASCADE)
     rent_amount = models.DecimalField(max_digits=10, decimal_places=2)
     security_amount = models.DecimalField(max_digits=10, decimal_places=2)
     increment = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -63,10 +63,9 @@ class ShopDetail(models.Model):
     detail = models.TextField(blank=True)
 
     def __str__(self):
-        return f"{self.tenant_name} - {self.shop.shop_no}"
+        return f"{self.shop.shop_no} - {self.tenant.name}"
 
     class Meta:
-        ordering = ['-rent_date']
         verbose_name_plural = 'Shop Details'
         verbose_name = 'Shop Detail'
     
@@ -107,7 +106,7 @@ class ShopPayment(models.Model):
         ('security', 'Security'),
         ('installment', 'Installment'),
     ]
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='rents')
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='payments')
     shop_rent = models.ForeignKey(ShopRent, on_delete=models.CASCADE, related_name='payments', null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_type = models.CharField(max_length=20, choices=PAYMENTTYPE_CHOICES, default='rent')
