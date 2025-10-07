@@ -1,0 +1,12 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+{% block content %}
+  <h1>{{ title }}</h1>
+  <form method="post" novalidate>{% csrf_token %}
+    <table>
+      {{ form.as_table }}
+    </table>
+    <p><input type="submit" value="Create rents"></p>
+  </form>
+  <p><a href="{% url 'admin:hotel_shopdetail_changelist' %}">Back to list</a></p>
+{% endblock %}

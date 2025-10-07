@@ -76,7 +76,7 @@ class ShopRent(models.Model):
     is_increment = models.BooleanField(default=False)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_percentage = models.BooleanField(default=False)
-    final_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    final_amount = models.DecimalField(max_digits=10, decimal_places=2, editable=False, null=True, blank=True)
     rent_date = models.DateField()
     year = models.PositiveIntegerField(editable=False)
     month = models.PositiveIntegerField(editable=False)
@@ -92,7 +92,7 @@ class ShopRent(models.Model):
         return calendar.month_name[self.month] if self.month else ""
     
     def __str__(self):
-        return f"{self.shop_detail.tenant.name} - {self.amount} ({self.rent_date})"
+        return f"{self.amount} ({self.rent_date})"
 
     class Meta:
         ordering = ['-rent_date']

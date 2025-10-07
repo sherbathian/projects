@@ -1,7 +1,14 @@
 from django.contrib import admin
-from hotel.models import Shop, ShopDetail
+from hotel.models import Shop, ShopDetail, ShopRent
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin, ExportActionMixin
+from django.urls import path, reverse
+from django import forms
+from django.template.response import TemplateResponse
+from django.contrib import messages
+from django.db import transaction
+import calendar
+from datetime import date
 
 class ShopResource(resources.ModelResource):
     def __init__(self, *args, **kwargs):
@@ -82,6 +89,7 @@ class ShopDetailResource(resources.ModelResource):
 @admin.register(ShopDetail)
 class ShopDetailAdmin(ExportActionMixin, ImportExportModelAdmin):
     resource_class = ShopDetailResource
+    change_list_template = "admin/hotel/shopdetail/change_list.html"
     list_display = ('shop', 'tenant', 'rent_amount', 'security_amount')
     # make the right-side filters render as dropdowns showing only related values
     list_filter = (ShopListFilter, TenantListFilter)
@@ -93,3 +101,71 @@ class ShopDetailAdmin(ExportActionMixin, ImportExportModelAdmin):
         if db_field.name == 'shop':
             kwargs['queryset'] = Shop.objects.filter(status='rent')
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    # --- bulk create rents admin view ------------------------------------------------
+    class BulkRentForm(forms.Form):
+        month = forms.ChoiceField(choices=[(i, calendar.month_name[i]) for i in range(1, 13)])
+        year = forms.ChoiceField()
+
+        def __init__(self, *args, **kwargs):
+            current_year = date.today().year
+            years = [(y, str(y)) for y in range(current_year - 2, current_year + 6)]
+            super().__init__(*args, **kwargs)
+            self.fields['year'].choices = years
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path('bulk-create-rents/', self.admin_site.admin_view(self.bulk_create_rents), name='hotel_shopdetail_bulk_create_rents'),
+        ]
+        return custom + urls
+
+    def bulk_create_rents(self, request):
+        if request.method == 'POST':
+            form = self.BulkRentForm(request.POST)
+            if form.is_valid():
+                month = int(form.cleaned_data['month'])
+                year = int(form.cleaned_data['year'])
+                created = 0
+                skipped = 0
+                shop_details = ShopDetail.objects.filter(shop__status='rent').select_related('shop')
+                with transaction.atomic():
+                    for sd in shop_details:
+                        # skip if rent record already exists for that shop/year/month
+                        exists = ShopRent.objects.filter(shop=sd.shop, year=year, month=month).exists()
+                        if exists:
+                            skipped += 1
+                            continue
+                        # apply annual increment (add ShopDetail.increment to base rent)
+                        amount = sd.rent_amount or 0
+                        increment = sd.increment or 0
+                        final_amount = amount + increment
+                        is_increment = bool(increment)
+                        rent_date = date(year, month, 1)
+                        ShopRent.objects.create(
+                            shop=sd.shop,
+                            amount=final_amount,
+                            is_increment=is_increment,
+                            discount=0,
+                            is_percentage=False,
+                            final_amount=None,  # model save will compute year/month; final_amount remains None until save logic runs if any
+                            rent_date=rent_date
+                        )
+                        created += 1
+                messages.success(request, f'Created {created} rents, skipped {skipped} already-existing.')
+                # Redirect back to changelist
+                return TemplateResponse(request, 'admin/hotel/shopdetail/bulk_create_result.html', {'created': created, 'skipped': skipped})
+        else:
+            form = self.BulkRentForm()
+
+        context = dict(
+            self.admin_site.each_context(request),
+            form=form,
+            title='Bulk create rents for all "rent" shops',
+        )
+        return TemplateResponse(request, 'admin/hotel/shopdetail/bulk_create_form.html', context)
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['bulk_create_url'] = reverse('admin:hotel_shopdetail_bulk_create_rents')
+        return super().changelist_view(request, extra_context=extra_context)
