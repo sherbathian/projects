@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.db import transaction
 import calendar
 from datetime import date
+from decimal import Decimal
 
 class ShopResource(resources.ModelResource):
     def __init__(self, *args, **kwargs):
@@ -33,7 +34,7 @@ class ShopResource(resources.ModelResource):
 @admin.register(Shop)
 class ShopAdmin(ExportActionMixin, ImportExportModelAdmin):
     resource_class = ShopResource
-    list_display = ('shop_no', 'status', 'amount', 'added_by', 'created_at')
+    list_display = ('shop_no', 'status', 'amount', 'added_by', 'balance', 'created_at')
     list_filter = ('status', 'created_at')
     search_fields = ('shop_no', 'detail', 'added_by__username')
     ordering = ('shop_no',)
@@ -48,6 +49,11 @@ class ShopAdmin(ExportActionMixin, ImportExportModelAdmin):
         if not change or not getattr(obj, 'added_by', None):
             obj.added_by = request.user
         super().save_model(request, obj, form, change)
+
+    def balance(self, obj):
+        bal = obj.get_balance()
+        return f"{bal:.2f}"
+    balance.short_description = 'Balance'
 
 class ShopListFilter(admin.SimpleListFilter):
     title = 'Shop'
@@ -90,7 +96,7 @@ class ShopDetailResource(resources.ModelResource):
 class ShopDetailAdmin(ExportActionMixin, ImportExportModelAdmin):
     resource_class = ShopDetailResource
     change_list_template = "admin/hotel/shopdetail/change_list.html"
-    list_display = ('shop', 'tenant', 'rent_amount', 'security_amount')
+    list_display = ('shop', 'tenant', 'rent_amount', 'security_amount', 'increment', 'start_date', 'detail')
     # make the right-side filters render as dropdowns showing only related values
     list_filter = (ShopListFilter, TenantListFilter)
     search_fields = ('shop__shop_no', 'tenant__name')
@@ -99,7 +105,18 @@ class ShopDetailAdmin(ExportActionMixin, ImportExportModelAdmin):
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         # restrict the shop dropdown on add/edit to shops with status == 'rent'
         if db_field.name == 'shop':
-            kwargs['queryset'] = Shop.objects.filter(status='rent')
+            qs = Shop.objects.filter(status='rent')
+            # when editing, include the Shop already linked to this ShopDetail even if its status changed
+            try:
+                obj_id = request.resolver_match.kwargs.get('object_id')
+                if obj_id:
+                    sd = ShopDetail.objects.filter(pk=obj_id).select_related('shop').first()
+                    if sd and sd.shop:
+                        qs = qs | Shop.objects.filter(pk=sd.shop.pk)
+            except Exception:
+                # fallback: ignore resolver issues and use the rent queryset
+                pass
+            kwargs['queryset'] = qs.distinct()
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     # --- bulk create rents admin view ------------------------------------------------
@@ -128,7 +145,7 @@ class ShopDetailAdmin(ExportActionMixin, ImportExportModelAdmin):
                 year = int(form.cleaned_data['year'])
                 created = 0
                 skipped = 0
-                shop_details = ShopDetail.objects.filter(shop__status='rent').select_related('shop')
+                shop_details = ShopDetail.objects.filter(shop__status='rent').select_related('shop').distinct()
                 with transaction.atomic():
                     for sd in shop_details:
                         # skip if rent record already exists for that shop/year/month
@@ -137,18 +154,28 @@ class ShopDetailAdmin(ExportActionMixin, ImportExportModelAdmin):
                             skipped += 1
                             continue
                         # apply annual increment (add ShopDetail.increment to base rent)
-                        amount = sd.rent_amount or 0
-                        increment = sd.increment or 0
-                        final_amount = amount + increment
-                        is_increment = bool(increment)
+                        started_at = sd.start_date
+                        now = date.today()
+                        months_diff = (now.year - started_at.year) * 12 + (now.month - started_at.month)
+                        # compute full years since start (annual increment)
+                        years = months_diff // 12 if months_diff > 0 else 0
+                        amount = sd.rent_amount or Decimal('0')
+                        increment = sd.increment or Decimal('0')
+                        if years > 0 and increment > 0:
+                            increment = increment / 100 * sd.rent_amount
+                            amount += increment * years
+                            is_increment = True
+                        else:
+                            is_increment = False
+                        final_amount = amount
                         rent_date = date(year, month, 1)
                         ShopRent.objects.create(
                             shop=sd.shop,
-                            amount=final_amount,
-                            is_increment=is_increment,
+                            amount=amount,
+                            is_increment=bool(is_increment),
                             discount=0,
                             is_percentage=False,
-                            final_amount=None,  # model save will compute year/month; final_amount remains None until save logic runs if any
+                            final_amount=final_amount,  # model save will compute year/month; final_amount remains None until save logic runs if any
                             rent_date=rent_date
                         )
                         created += 1

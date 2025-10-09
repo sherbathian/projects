@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.db.models import Sum, Q
+from decimal import Decimal
 
 User = get_user_model()
 
@@ -52,6 +54,19 @@ class Shop(models.Model):
         verbose_name_plural = 'Shops'
         verbose_name = 'Shop'
 
+    def get_balance(self):
+        """
+        Return total outstanding balance for this shop:
+        total rents (use final_amount when present else amount) - total payments
+        """
+        total_final = self.rents.filter(final_amount__isnull=False).aggregate(total=Sum('final_amount'))['total'] or Decimal('0')
+        total_amounts = self.rents.filter(final_amount__isnull=True).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        total_rents = (total_final or Decimal('0')) + (total_amounts or Decimal('0'))
+
+        total_payments = self.payments.aggregate(total=Sum('amount'))['total'] or Decimal('0')
+
+        return (total_rents or Decimal('0')) - (total_payments or Decimal('0'))
+
 class ShopDetail(models.Model):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='details')
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
@@ -85,6 +100,14 @@ class ShopRent(models.Model):
         if self.rent_date:
             self.year = self.rent_date.year
             self.month = self.rent_date.month
+        
+        if self.amount and self.discount:
+            if self.is_percentage:
+                discount_amount = (self.amount * self.discount) / 100
+            else:
+                discount_amount = self.discount
+            self.final_amount = self.amount - discount_amount
+            
         super().save(*args, **kwargs)
     
     def get_month_name(self):
@@ -107,7 +130,6 @@ class ShopPayment(models.Model):
         ('installment', 'Installment'),
     ]
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='payments')
-    shop_rent = models.ForeignKey(ShopRent, on_delete=models.CASCADE, related_name='payments', null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_type = models.CharField(max_length=20, choices=PAYMENTTYPE_CHOICES, default='rent')
     payment_date = models.DateField()
@@ -126,7 +148,7 @@ class ShopPayment(models.Model):
         return calendar.month_name[self.month] if self.month else ""
     
     def __str__(self):
-        return f"{self.shop_rent.shop_detail.tenant.name} - {self.amount} ({self.payment_date})"
+        return f"{self.amount} ({self.payment_date})"
     
     class Meta:
         ordering = ['-payment_date']
