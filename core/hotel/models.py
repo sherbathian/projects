@@ -7,7 +7,9 @@ User = get_user_model()
 
 class Partner(models.Model):
     name = models.CharField(max_length=255)
-    contact = models.CharField(max_length=100, blank=True)
+    cnic = models.CharField(max_length=100, unique=True)
+    contact = models.CharField(max_length=100, unique=True)
+    share_percentage = models.DecimalField(max_digits=5, decimal_places=2)
     detail = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -21,6 +23,7 @@ class Partner(models.Model):
 
 class Tenant(models.Model):
     name = models.CharField(max_length=255)
+    cnic = models.CharField(max_length=100, unique=True)
     contact = models.CharField(max_length=100, unique=True)
     detail = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
