@@ -21,7 +21,7 @@ class Partner(models.Model):
 
 class Tenant(models.Model):
     name = models.CharField(max_length=255)
-    contact = models.CharField(max_length=100, blank=True)
+    contact = models.CharField(max_length=100, unique=True)
     detail = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -42,7 +42,7 @@ class Shop(models.Model):
     shop_no = models.CharField(max_length=10)
     added_by = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='empty')
-    amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    sold_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     detail = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -152,8 +152,8 @@ class ShopPayment(models.Model):
     
     class Meta:
         ordering = ['-payment_date']
-        verbose_name_plural = 'Rent Payments'
-        verbose_name = 'Rent Payment'
+        verbose_name_plural = 'Shop Payments'
+        verbose_name = 'Shop Payment'
 
 class Expense(models.Model):
     
@@ -184,7 +184,7 @@ class Expense(models.Model):
         return calendar.month_name[self.month] if self.month else ""
     
     def __str__(self):
-        return f"{self.name} - {self.amount} ({self.expense_date})"
+        return f"{self.amount} ({self.expense_date})"
     
     class Meta:
         ordering = ['-expense_date']

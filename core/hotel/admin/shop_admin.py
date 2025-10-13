@@ -34,11 +34,11 @@ class ShopResource(resources.ModelResource):
 @admin.register(Shop)
 class ShopAdmin(ExportActionMixin, ImportExportModelAdmin):
     resource_class = ShopResource
-    list_display = ('shop_no', 'status', 'amount', 'added_by', 'balance', 'created_at')
+    list_display = ('shop_no', 'status', 'sold_amount', 'balance', 'created_at')
     list_filter = ('status', 'created_at')
-    search_fields = ('shop_no', 'detail', 'added_by__username')
+    search_fields = ('shop_no', 'detail')
     ordering = ('shop_no',)
-    fields = ('shop_no', 'status', 'amount', 'detail')
+    fields = ('shop_no', 'status', 'sold_amount', 'detail')
 
     def get_resource_kwargs(self, request, *args, **kwargs):
         # pass the current user into the resource so imports can set added_by
@@ -84,12 +84,12 @@ class TenantListFilter(admin.SimpleListFilter):
         return queryset
 
 class ShopDetailResource(resources.ModelResource):
-
+    
     class Meta:
-        exclude = ('id',)
-        import_id_fields = ('shop__shop_no', 'tenant__name')
+        exclude = ('id', 'shop_id', 'tenant_id')
+        import_id_fields = ('shop__shop_no', 'tenant__contact')
         skip_unchanged = True
-        fields = ('shop__shop_no', 'tenant__name', 'rent_amount', 'security_amount', 'increment', 'detail') 
+        fields = ('shop__shop_no', 'tenant__name', 'tenant__contact', 'rent_amount', 'security_amount', 'increment', 'detail') 
         model = ShopDetail
     
 @admin.register(ShopDetail)
