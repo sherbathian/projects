@@ -204,9 +204,9 @@ class PartnerPayment(models.Model):
     comments = models.TextField(blank=True)
     
     def save(self, *args, **kwargs):
-        if self.expense_date:
-            self.year = self.expense_date.year
-            self.month = self.expense_date.month
+        if self.payment_date:
+            self.year = self.payment_date.year
+            self.month = self.payment_date.month
         super().save(*args, **kwargs)
     
     def get_month_name(self):

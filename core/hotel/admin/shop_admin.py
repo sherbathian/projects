@@ -1,7 +1,9 @@
 from django.contrib import admin
-from hotel.models import Shop, ShopDetail, ShopRent
+from hotel.models import Shop, ShopDetail, ShopRent, Tenant
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin, ExportActionMixin
+from import_export.widgets import ForeignKeyWidget
+from import_export import fields
 from django.urls import path, reverse
 from django import forms
 from django.template.response import TemplateResponse
@@ -10,6 +12,7 @@ from django.db import transaction
 import calendar
 from datetime import date
 from decimal import Decimal
+from django.db.models import Sum
 
 class ShopResource(resources.ModelResource):
     def __init__(self, *args, **kwargs):
@@ -54,6 +57,24 @@ class ShopAdmin(ExportActionMixin, ImportExportModelAdmin):
         bal = obj.get_balance()
         return f"{bal:.2f}"
     balance.short_description = 'Balance'
+    
+    change_list_template = 'admin/change_list.html'
+    
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context=extra_context)
+        # if not hasattr(response, 'context_data') or response.context_data is None:
+        #     return response
+        # try:
+        #     cl = response.context_data.get('cl')
+        #     if cl is not None:
+        #         qs = cl.queryset
+        #         totals = qs.aggregate(
+        #             total_balance=Sum('balance'),
+        #         )
+        #         response.context_data['total_balance'] = totals.get('total_balance') or 0
+        # except Exception:
+        #     response.context_data.setdefault('total_balance', 0)
+        return response
 
 class ShopListFilter(admin.SimpleListFilter):
     title = 'Shop'
@@ -85,11 +106,21 @@ class TenantListFilter(admin.SimpleListFilter):
 
 class ShopDetailResource(resources.ModelResource):
     
+    shop = fields.Field(
+        column_name='shop',
+        attribute='shop',
+        widget=ForeignKeyWidget(Shop, field='shop_no'))
+    
+    tenant = fields.Field(
+        column_name='tenant',
+        attribute='tenant',
+        widget=ForeignKeyWidget(Tenant, field='cnic'))
+    
     class Meta:
-        exclude = ('id', 'shop_id', 'tenant_id')
-        import_id_fields = ('shop__shop_no', 'tenant__contact')
-        skip_unchanged = True
-        fields = ('shop__shop_no', 'tenant__name', 'tenant__contact', 'rent_amount', 'security_amount', 'increment', 'detail') 
+        # exclude = ('id', 'shop_id', 'tenant_id')
+        # import_id_fields = ('shop__shop_no', 'tenant__cnic')
+        # skip_unchanged = True
+        fields = ('id', 'shop', 'tenant', 'rent_amount', 'security_amount', 'increment', 'start_date', 'detail') 
         model = ShopDetail
     
 @admin.register(ShopDetail)
