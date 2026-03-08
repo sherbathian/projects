@@ -26,9 +26,6 @@ class PartnerPaymentAdmin(admin.ModelAdmin):
     ordering = ('-payment_date',)   
     
     
-    
-    
-    
 admin.site.site_header = "Hotel Admin"
 admin.site.site_title = "Hotel Admin"
 admin.site.index_title = "Welcome to the Hotel Admin"   

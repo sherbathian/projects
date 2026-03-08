@@ -3,3 +3,4 @@ from . import tenant_admin
 from . import shop_admin
 from . import rent_admin
 from . import expense_admin
+from . import bank_admin

@@ -53,7 +53,7 @@ class ShopRentAdmin(admin.ModelAdmin):
 
 @admin.register(ShopPayment)
 class ShopPaymentAdmin(admin.ModelAdmin):
-    list_display = ('shop', 'payment_date', 'amount', 'balance_after_payment')
+    list_display = ('shop', 'payment_type', 'payment_date', 'amount', 'balance_after_payment')
     list_filter = (MonthNameListFilter, PaymentYearListFilter)
     search_fields = ('shop__shop_no',)
     ordering = ('-payment_date',)

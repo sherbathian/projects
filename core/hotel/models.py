@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.db.models import Sum, Q
 from decimal import Decimal
+from datetime import date
 
 User = get_user_model()
 
@@ -139,6 +140,7 @@ class ShopPayment(models.Model):
     year = models.PositiveIntegerField(editable=False)
     month = models.PositiveIntegerField(editable=False)
     comments = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
         if self.payment_date:
@@ -175,6 +177,7 @@ class Expense(models.Model):
     year = models.PositiveIntegerField(editable=False)
     month = models.PositiveIntegerField(editable=False)
     comments = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
         if self.expense_date:
@@ -220,3 +223,36 @@ class PartnerPayment(models.Model):
         ordering = ['-payment_date']
         verbose_name_plural = 'Partner Payments'
         verbose_name = 'Partner Payment'
+
+
+def current_year():
+    return date.today().year
+
+def current_month():
+    return date.today().month
+        
+class Bank(models.Model):
+    year = models.PositiveIntegerField(default=current_year, editable=False)
+    month = models.PositiveIntegerField(default=current_month, editable=False)
+    total = models.DecimalField(max_digits=12, decimal_places=2)
+    expense = models.DecimalField(max_digits=12, decimal_places=2)
+    distribute = models.DecimalField(max_digits=12, decimal_places=2)
+    balance = models.DecimalField(max_digits=12, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # def get_month_name(self):
+    #     import calendar
+    #     return calendar.month_name[self.month] if self.month else ""
+    
+    def __str__(self):
+        # Ensure we always return a string (was returning an int)
+        # Prefer a readable label; fall back to the default object repr if needed.
+        try:
+            return str(self.year) if getattr(self, 'year', None) is not None else super().__str__()
+        except Exception:
+            return super().__str__()
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name_plural = 'Banks'
+        verbose_name = 'Bank'

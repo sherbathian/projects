@@ -12,7 +12,7 @@ from django.db import transaction
 import calendar
 from datetime import date
 from decimal import Decimal
-from django.db.models import Sum
+# from django.db.models import Sum
 
 class ShopResource(resources.ModelResource):
     def __init__(self, *args, **kwargs):
@@ -58,23 +58,23 @@ class ShopAdmin(ExportActionMixin, ImportExportModelAdmin):
         return f"{bal:.2f}"
     balance.short_description = 'Balance'
     
-    change_list_template = 'admin/change_list.html'
+    # change_list_template = 'admin/change_list.html'
     
-    def changelist_view(self, request, extra_context=None):
-        response = super().changelist_view(request, extra_context=extra_context)
-        # if not hasattr(response, 'context_data') or response.context_data is None:
-        #     return response
-        # try:
-        #     cl = response.context_data.get('cl')
-        #     if cl is not None:
-        #         qs = cl.queryset
-        #         totals = qs.aggregate(
-        #             total_balance=Sum('balance'),
-        #         )
-        #         response.context_data['total_balance'] = totals.get('total_balance') or 0
-        # except Exception:
-        #     response.context_data.setdefault('total_balance', 0)
-        return response
+    # def changelist_view(self, request, extra_context=None):
+    #     response = super().changelist_view(request, extra_context=extra_context)
+    #     if not hasattr(response, 'context_data') or response.context_data is None:
+    #         return response
+    #     try:
+    #         cl = response.context_data.get('cl')
+    #         if cl is not None:
+    #             qs = cl.queryset
+    #             totals = qs.aggregate(
+    #                 total_balance=Sum('balance'),
+    #             )
+    #             response.context_data['total_balance'] = totals.get('total_balance') or 0
+    #     except Exception:
+    #         response.context_data.setdefault('total_balance', 0)
+    #     return response
 
 class ShopListFilter(admin.SimpleListFilter):
     title = 'Shop'
@@ -157,9 +157,13 @@ class ShopDetailAdmin(ExportActionMixin, ImportExportModelAdmin):
 
         def __init__(self, *args, **kwargs):
             current_year = date.today().year
+            current_month = date.today().month
             years = [(y, str(y)) for y in range(current_year - 2, current_year + 6)]
             super().__init__(*args, **kwargs)
             self.fields['year'].choices = years
+            # set defaults to current month/year
+            self.fields['year'].initial = current_year
+            self.fields['month'].initial = current_month
 
     def get_urls(self):
         urls = super().get_urls()
