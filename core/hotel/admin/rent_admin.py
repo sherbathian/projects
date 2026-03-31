@@ -1,5 +1,6 @@
 from django.contrib import admin
 from hotel.models import ShopRent, ShopPayment
+from django.db.models import Sum
 
 class MonthNameListFilter(admin.SimpleListFilter):
     title = 'Month'
@@ -50,6 +51,23 @@ class ShopRentAdmin(admin.ModelAdmin):
     search_fields = ('shop__shop_no',)
     ordering = ('-rent_date',)
     fields = ('shop', 'amount',  'discount', 'is_percentage',  'rent_date')
+    change_list_template = 'admin/hotel/shoprent/change_list.html'
+
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context=extra_context)
+        if not hasattr(response, 'context_data') or response.context_data is None:
+            return response
+        try:
+            cl = response.context_data.get('cl')
+            if cl is not None:
+                qs = cl.queryset
+                totals = qs.aggregate(
+                    total_final_amount=Sum('final_amount'),
+                )
+                response.context_data['total_final_amount'] = totals['total_final_amount'] or 0
+        except Exception:
+            pass
+        return response
 
 @admin.register(ShopPayment)
 class ShopPaymentAdmin(admin.ModelAdmin):

@@ -1,17 +1,17 @@
 {% load i18n %}
     {% url 'admin:donation_dashboard' as dashboard_url %}
-    <div class="module" id="saddqah-dashboard-link-legacy">
-    <h2>{% trans "Project Reports" %}</h2>
-    <ul class="nav nav-pills nav-stacked" style="margin-left: 6px;">
-      {% comment %} {% if request.user.has_perm "project.view_project" %} {% endcomment %}
-      <li style="list-style: none;"><a href="{% url 'admin:party_balance_report' %}">{% trans "Party Balance" %}</a></li>
-      {% comment %} {% endif %} {% endcomment %}
-      <li style="list-style: none;"><a href="{% url 'admin:saddqah_report' %}">{% trans "Saddqah" %}</a></li>
-      <li style="list-style: none;"><a href="{% url 'admin:project_ledger_report' %}">{% trans "Project Ledger" %}</a></li>
-      <li style="list-style: none;"><a href="{% url 'admin:party_project_ledger_report' %}">{% trans "Party Project Ledger" %}</a></li>
-      <li style="list-style: none;"><a href="{% url 'admin:party_ledger_report' %}">{% trans "Party Ledger" %}</a></li>
-    </ul>
-
+      {% if perms.project.add_project %}
+      <div class="module" id="saddqah-dashboard-link-legacy">
+      <h2>{% trans "Project Reports" %}</h2>
+      <ul class="nav nav-pills nav-stacked" style="margin-left: 6px;">
+        <li style="list-style: none;"><a href="{% url 'admin:party_balance_report' %}">{% trans "Party Balance" %}</a></li>
+        <li style="list-style: none;"><a href="{% url 'admin:saddqah_report' %}">{% trans "Saddqah" %}</a></li>
+        <li style="list-style: none;"><a href="{% url 'admin:project_ledger_report' %}">{% trans "Project Ledger" %}</a></li>
+        <li style="list-style: none;"><a href="{% url 'admin:party_project_ledger_report' %}">{% trans "Party Project Ledger" %}</a></li>
+        <li style="list-style: none;"><a href="{% url 'admin:party_ledger_report' %}">{% trans "Party Ledger" %}</a></li>
+      </ul>
+  {% endif %}
+   {% if perms.fund.add_bank %}
    <div class="module" id="fund-dashboard-link-legacy">
     <h2>{% trans "Donation Reports" %}</h2>
     <ul class="nav nav-pills nav-stacked" style="margin-left: 6px;">
@@ -19,6 +19,15 @@
       <li style="list-style: none;"><a href="{% url 'admin:payment_report' %}">{% trans "Payment" %}</a></li>
     </ul>
   </div>
+  {% endif %}
+  {% if perms.hotel.add_rent %}
+   <div class="module" id="fund-dashboard-link-legacy">
+    <h2>{% trans "Hotel Reports" %}</h2>
+    <ul class="nav nav-pills nav-stacked" style="margin-left: 6px;">
+      {% comment %} <li style="list-style: none;"><a href="{% url 'admin:rent_report' %}">{% trans "Rent" %}</a></li> {% endcomment %}
+    </ul>
+  </div>
+  {% endif %}
 {% if app_list %}
   {% for app in app_list %}
     <div class="app-{{ app.app_label }} module{% if app.app_url in request.path|urlencode %} current-app{% endif %}">
