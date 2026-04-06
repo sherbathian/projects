@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.admin import helpers
 from hotel.models import Shop, ShopDetail, ShopRent, Tenant
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin, ExportActionMixin
@@ -12,6 +13,7 @@ from django.db import transaction
 import calendar
 from datetime import date
 from decimal import Decimal
+from django.shortcuts import redirect
 # from django.db.models import Sum
 
 class ShopResource(resources.ModelResource):
@@ -31,17 +33,20 @@ class ShopResource(resources.ModelResource):
         exclude = ('id',)
         import_id_fields = ('shop_no',)
         skip_unchanged = True
-        fields = ('shop_no', 'status', 'amount', 'created_at')
+        fields = ('location', 'shop_no', 'status', 'amount', 'created_at')
         model = Shop
 
 @admin.register(Shop)
 class ShopAdmin(ExportActionMixin, ImportExportModelAdmin):
     resource_class = ShopResource
-    list_display = ('shop_no', 'status', 'sold_amount', 'balance', 'created_at')
-    list_filter = ('status', 'created_at')
+    list_display = ('location', 'shop_no', 'status', 'sold_amount', 'balance', 'created_at')
+    list_filter = ('location', 'status', 'created_at')
     search_fields = ('shop_no', 'detail')
     ordering = ('shop_no',)
-    fields = ('shop_no', 'status', 'sold_amount', 'detail')
+    fields = ('location', 'shop_no', 'status', 'sold_amount', 'detail')
+    actions = ['bulk_update_location']
+    list_editable = ['location']
+    list_display_links = ['shop_no']
 
     def get_resource_kwargs(self, request, *args, **kwargs):
         # pass the current user into the resource so imports can set added_by
@@ -75,6 +80,44 @@ class ShopAdmin(ExportActionMixin, ImportExportModelAdmin):
     #     except Exception:
     #         response.context_data.setdefault('total_balance', 0)
     #     return response
+
+    def bulk_update_location(self, request, queryset):
+        selected = request.POST.getlist(helpers.ACTION_CHECKBOX_NAME)
+        return redirect(reverse('admin:hotel_shop_bulk_update_location') + '?ids=' + ','.join(selected))
+    bulk_update_location.short_description = "Update location of selected shops"
+
+    class LocationForm(forms.Form):
+        location = forms.ChoiceField(choices=Shop.LOCATION_CHOICES)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path('bulk-update-location/', self.admin_site.admin_view(self.bulk_update_location_view), name='hotel_shop_bulk_update_location'),
+        ]
+        return custom + urls
+
+    def bulk_update_location_view(self, request):
+        ids = [i for i in request.GET.get('ids', '').split(',') if i]
+        if not ids:
+            messages.error(request, 'No shops selected.')
+            return redirect('admin:hotel_shop_changelist')
+        shops = Shop.objects.filter(id__in=ids)
+        if request.method == 'POST':
+            form = self.LocationForm(request.POST)
+            if form.is_valid():
+                new_location = form.cleaned_data['location']
+                count = shops.update(location=new_location)
+                messages.success(request, f'Updated location for {count} shops.')
+                return redirect('admin:hotel_shop_changelist')
+        else:
+            form = self.LocationForm()
+        context = dict(
+            self.admin_site.each_context(request),
+            shops=shops,
+            form=form,
+            title='Bulk update location',
+        )
+        return TemplateResponse(request, 'admin/hotel/shop/bulk_update_location.html', context)
 
 class ShopListFilter(admin.SimpleListFilter):
     title = 'Shop'

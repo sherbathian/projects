@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.db.models import Sum
 from django.template.response import TemplateResponse
 import datetime
-from hotel.models import ShopRent
+from hotel.models import ShopRent, Shop
 from django.http import HttpResponse
 from django.contrib import messages
 import io
@@ -15,14 +15,18 @@ class RentReportAdminView:
         start_date = request.GET.get('start_date', '')
         end_date = request.GET.get('end_date', '')
         year_param = request.GET.get('year', 'any')
+        location_param = request.GET.get('location', 'any')
 
-        base_qs = ShopRent.objects.all()
+        base_qs = ShopRent.objects.select_related('shop')
 
         if year_param != 'any':
             try:
                 base_qs = base_qs.filter(rent_date__year=int(year_param))
             except ValueError:
                 pass
+
+        if location_param != 'any':
+            base_qs = base_qs.filter(shop__location=location_param)
 
         # detect field type for rent_date
         try:
@@ -51,25 +55,28 @@ class RentReportAdminView:
         except Exception:
             pass
 
-        # aggregate by year+month
+        # aggregate by location and month
         ledger_data = (
             base_qs
-            .values('rent_date__year', 'rent_date__month')
+            .values('shop__location', 'rent_date__year', 'rent_date__month')
             .annotate(
                 total_amount=Sum('final_amount'),
             )
-            .order_by('rent_date__year', 'rent_date__month')
+            .order_by('shop__location', 'rent_date__year', 'rent_date__month')
         )
 
         rows = []
         total_amount = 0.0
         for entry in ledger_data:
-            y = entry['rent_date__year']
-            m = entry['rent_date__month']
-            month_name = datetime.date(2000, m, 1).strftime('%B')
+            location = entry['shop__location']
+            location_display = dict(Shop.LOCATION_CHOICES).get(location, location)
+            year = entry['rent_date__year']
+            month = entry['rent_date__month']
+            month_name = datetime.date(2000, month, 1).strftime('%B')
             amount = float(entry.get('total_amount') or 0)
             rows.append({
-                'year': y,
+                'location': location_display,
+                'year': year,
                 'month': month_name,
                 'amount': amount,
             })
@@ -77,16 +84,19 @@ class RentReportAdminView:
 
        
 
-        # dropdowns for years
+        # dropdowns for years and locations
         years_qs = ShopRent.objects.dates('rent_date', 'year').distinct()
         years = [y.year for y in years_qs]
+        locations = Shop.LOCATION_CHOICES
 
         context = dict(
             admin.site.each_context(request),
             rows=rows,
             years=years,
+            locations=locations,
             total_amount=total_amount,
             selected_year=str(year_param),
+            selected_location=location_param,
             start_date=start_date,
             end_date=end_date,
         )
@@ -98,14 +108,18 @@ class RentReportAdminView:
         start_date = request.GET.get('start_date', '')
         end_date = request.GET.get('end_date', '')
         year_param = request.GET.get('year', 'any')
+        location_param = request.GET.get('location', 'any')
 
-        base_qs = ShopRent.objects.all()
+        base_qs = ShopRent.objects.select_related('shop')
 
         if year_param != 'any':
             try:
                 base_qs = base_qs.filter(rent_date__year=int(year_param))
             except ValueError:
                 pass
+
+        if location_param != 'any':
+            base_qs = base_qs.filter(shop__location=location_param)
 
         try:
             field_type = ShopRent._meta.get_field('rent_date').get_internal_type()
@@ -134,21 +148,23 @@ class RentReportAdminView:
 
         ledger_data = (
             base_qs
-            .values('rent_date__year', 'rent_date__month')
+            .values('shop__location', 'rent_date__year', 'rent_date__month')
             .annotate(
                 total_amount=Sum('final_amount'),
             )
-            .order_by('rent_date__year', 'rent_date__month')
+            .order_by('shop__location', 'rent_date__year', 'rent_date__month')
         )
 
         rows = []
         total_amount = 0.0
         for entry in ledger_data:
-            y = entry['rent_date__year']
-            m = entry['rent_date__month']
-            month_name = datetime.date(2000, m, 1).strftime('%B')
+            location = entry['shop__location']
+            location_display = dict(Shop.LOCATION_CHOICES).get(location, location)
+            year = entry['rent_date__year']
+            month = entry['rent_date__month']
+            month_name = datetime.date(2000, month, 1).strftime('%B')
             rec = float(entry.get('total_amount') or 0)
-            rows.append([str(y), month_name, f"{rec:.2f}"])
+            rows.append([location_display, str(year), month_name, f"{rec:.2f}"])
             total_amount += rec
 
         try:
@@ -170,23 +186,26 @@ class RentReportAdminView:
 
         # add filter summary
         filter_line = f"Year: {year_param if year_param!='any' else 'Any'}"
+        if location_param != 'any':
+            location_display = dict(Shop.LOCATION_CHOICES).get(location_param, location_param)
+            filter_line += f"    Location: {location_display}"
         if start_date or end_date:
             filter_line += f"    Date Range: {start_date or 'Any'} - {end_date or 'Any'}"
         elements.append(Paragraph(filter_line, styles['Normal']))
         elements.append(Spacer(1, 12))
 
-        data = [['Year', 'Month', 'Amount']]
+        data = [['Location', 'Year', 'Month', 'Amount']]
         data.extend(rows)
-        data.append(['', 'Totals:', f"{total_amount:.2f}"])
+        data.append(['', '', 'Totals:', f"{total_amount:.2f}"])
 
-        table = Table(data, repeatRows=1, hAlign='LEFT', colWidths=[60, 120, 120])
+        table = Table(data, repeatRows=1, hAlign='LEFT', colWidths=[120, 60, 80, 120])
         table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f0f0f0')),
             ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-            ('ALIGN', (2,1), (-1,-1), 'RIGHT'),
+            ('ALIGN', (3,1), (-1,-1), 'RIGHT'),
             ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
             ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('FONTNAME', (0,-1), (1,-1), 'Helvetica-Bold'),
+            ('FONTNAME', (0,-1), (2,-1), 'Helvetica-Bold'),
         ]))
         elements.append(table)
         doc.build(elements)

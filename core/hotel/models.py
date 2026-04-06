@@ -43,9 +43,16 @@ class Shop(models.Model):
         ('sold', 'Sold'),
         ('empty', 'Empty'),
     ]
+    LOCATION_CHOICES = [
+        ('second', 'Second Floor'),
+        ('second-cab', 'Second Floor Cabinet'),
+        ('third', 'Third Floor'),
+        ('third-cab', 'Third Floor Cabinet'),
+    ]
     shop_no = models.CharField(max_length=10)
     added_by = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='empty')
+    location = models.CharField(max_length=10, choices=LOCATION_CHOICES, default='second')
     sold_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     detail = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

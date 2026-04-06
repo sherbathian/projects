@@ -1,0 +1,18 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+{% block content %}
+  <h1>{{ title }}</h1>
+  <p>Selected shops:</p>
+  <ul>
+    {% for shop in shops %}
+      <li>{{ shop.shop_no }} - {{ shop.get_location_display }}</li>
+    {% endfor %}
+  </ul>
+  <form method="post" novalidate>{% csrf_token %}
+    <table>
+      {{ form.as_table }}
+    </table>
+    <p><input type="submit" value="Update locations"></p>
+  </form>
+  <p><a href="{% url 'admin:hotel_shop_changelist' %}">Back to list</a></p>
+{% endblock %}

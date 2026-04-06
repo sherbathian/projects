@@ -1,6 +1,6 @@
 from django.urls import path
 from django.contrib import admin
-from hotel.reports.rent_report import RentReportAdminView
+from hotel.admin.reports.rent_report import RentReportAdminView
 
 def get_admin_urls(original_get_urls):
     def get_urls():

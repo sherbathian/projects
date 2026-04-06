@@ -5,6 +5,7 @@
 <p>
   <strong>Selected Filters:</strong>
   Year: {{ selected_year|default:"Any" }} &nbsp;|&nbsp;
+  Location: {{ selected_location|default:"Any" }}
 </p>
 
 <form method="get" style="margin-bottom:20px;">
@@ -13,6 +14,14 @@
         <option value="any" {% if selected_year == 'any' %}selected{% endif %}>Any</option>
         {% for y in years %}
             <option value="{{ y }}" {% if selected_year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+    </select>
+
+    <label for="location">Location:</label>
+    <select name="location" id="location" onchange="this.form.submit()">
+        <option value="any" {% if selected_location == 'any' %}selected{% endif %}>Any</option>
+        {% for loc_val, loc_name in locations %}
+            <option value="{{ loc_val }}" {% if selected_location == loc_val %}selected{% endif %}>{{ loc_name }}</option>
         {% endfor %}
     </select>
 
@@ -30,6 +39,7 @@
 <table class="results">
     <thead>
         <tr>
+            <th>Location</th>
             <th>Year</th>
             <th>Month</th>
             <th>Amount</th>
@@ -40,7 +50,7 @@
     </tbody>
     <tfoot>
         <tr>
-            <th colspan="2" style="text-align:right;">Totals:</th>
+            <th colspan="3" style="text-align:right;">Totals:</th>
             <th id="totalAmount">{{ total_amount }}</th>
         </tr>
     </tfoot>
@@ -54,14 +64,21 @@
 const rows = {{ rows|safe }};
 
 // Payment Chart
+const locationColors = {
+    'Second Floor': 'rgba(54, 162, 235, 0.5)',
+    'Second Floor Cabinet': 'rgba(255, 99, 132, 0.5)',
+    'Third Floor': 'rgba(75, 192, 192, 0.5)',
+    'Third Floor Cabinet': 'rgba(255, 205, 86, 0.5)'
+};
+
 new Chart(document.getElementById('saddqahChart'), {
     type: 'bar',
     data: {
-        labels: rows.map(r => `${r.month} ${r.year}`),
+        labels: rows.map(r => `${r.location} - ${r.month} ${r.year}`),
         datasets: [{
-            label: 'Total Payment Amount',
+            label: 'Total Rent Amount by Location and Month',
             data: rows.map(r => r.amount),
-            backgroundColor: 'rgba(54, 162, 235, 0.5)'
+            backgroundColor: rows.map(r => locationColors[r.location] || 'rgba(153, 102, 255, 0.5)')
         }]
     },
     options: {
@@ -79,7 +96,7 @@ new Chart(document.getElementById('saddqahChart'), {
     tbody.innerHTML = '';
     rows.forEach(r => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.year}</td><td>${r.month}</td><td style="text-align:right;">${r.amount}</td>`;
+        tr.innerHTML = `<td>${r.location}</td><td>${r.year}</td><td>${r.month}</td><td style="text-align:right;">${r.amount}</td>`;
         tbody.appendChild(tr);
     });
 })();
