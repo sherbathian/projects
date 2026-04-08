@@ -193,6 +193,14 @@ class ShopDetailAdmin(ExportActionMixin, ImportExportModelAdmin):
             kwargs['queryset'] = qs.distinct()
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        # Only set initial values for new instances (when obj is None)
+        if obj is None:
+            form.base_fields['start_date'].initial = date.today()
+            form.base_fields['increment'].initial = 10
+        return form
+
     # --- bulk create rents admin view ------------------------------------------------
     class BulkRentForm(forms.Form):
         month = forms.ChoiceField(choices=[(i, calendar.month_name[i]) for i in range(1, 13)])
