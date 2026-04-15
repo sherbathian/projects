@@ -24,12 +24,6 @@
             <option value="{{ loc_val }}" {% if selected_location == loc_val %}selected{% endif %}>{{ loc_name }}</option>
         {% endfor %}
     </select>
-
-    <label for="start_date">Start date:</label>
-    <input type="date" id="start_date" name="start_date" value="{{ start_date }}" onchange="this.form.submit()">
-
-    <label for="end_date">End date:</label>
-    <input type="date" id="end_date" name="end_date" value="{{ end_date }}" onchange="this.form.submit()">
 </form>
 
 <div style="margin-bottom:8px;">

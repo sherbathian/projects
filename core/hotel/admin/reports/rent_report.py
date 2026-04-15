@@ -12,8 +12,6 @@ class RentReportAdminView:
     @staticmethod
     def dashboard_view(request):
         # Filters
-        start_date = request.GET.get('start_date', '')
-        end_date = request.GET.get('end_date', '')
         year_param = request.GET.get('year', 'any')
         location_param = request.GET.get('location', 'any')
 
@@ -27,33 +25,6 @@ class RentReportAdminView:
 
         if location_param != 'any':
             base_qs = base_qs.filter(shop__location=location_param)
-
-        # detect field type for rent_date
-        try:
-            field_type = ShopRent._meta.get_field('rent_date').get_internal_type()
-            is_datetime = field_type == 'DateTimeField'
-        except Exception:
-            is_datetime = True
-
-        try:
-            if start_date:
-                sd = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
-                if is_datetime:
-                    base_qs = base_qs.filter(rent_date__date__gte=sd)
-                else:
-                    base_qs = base_qs.filter(rent_date__gte=sd)
-        except Exception:
-            pass
-
-        try:
-            if end_date:
-                ed = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
-                if is_datetime:
-                    base_qs = base_qs.filter(rent_date__date__lte=ed)
-                else:
-                    base_qs = base_qs.filter(rent_date__lte=ed)
-        except Exception:
-            pass
 
         # aggregate by location and month
         ledger_data = (
@@ -97,16 +68,12 @@ class RentReportAdminView:
             total_amount=total_amount,
             selected_year=str(year_param),
             selected_location=location_param,
-            start_date=start_date,
-            end_date=end_date,
         )
         return TemplateResponse(request, "admin/hotel/report.html", context)
 
     @staticmethod
     def export_pdf(request):
         """Export aggregated ShopRent rows (filtered) as PDF."""
-        start_date = request.GET.get('start_date', '')
-        end_date = request.GET.get('end_date', '')
         year_param = request.GET.get('year', 'any')
         location_param = request.GET.get('location', 'any')
 
@@ -126,25 +93,6 @@ class RentReportAdminView:
             is_datetime = field_type == 'DateTimeField'
         except Exception:
             is_datetime = True
-
-        try:
-            if start_date:
-                sd = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
-                if is_datetime:
-                    base_qs = base_qs.filter(rent_date__date__gte=sd)
-                else:
-                    base_qs = base_qs.filter(rent_date__gte=sd)
-        except Exception:
-            pass
-        try:
-            if end_date:
-                ed = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
-                if is_datetime:
-                    base_qs = base_qs.filter(rent_date__date__lte=ed)
-                else:
-                    base_qs = base_qs.filter(rent_date__lte=ed)
-        except Exception:
-            pass
 
         ledger_data = (
             base_qs
@@ -189,8 +137,6 @@ class RentReportAdminView:
         if location_param != 'any':
             location_display = dict(Shop.LOCATION_CHOICES).get(location_param, location_param)
             filter_line += f"    Location: {location_display}"
-        if start_date or end_date:
-            filter_line += f"    Date Range: {start_date or 'Any'} - {end_date or 'Any'}"
         elements.append(Paragraph(filter_line, styles['Normal']))
         elements.append(Spacer(1, 12))
 
