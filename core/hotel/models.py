@@ -25,7 +25,7 @@ class Partner(models.Model):
 class Tenant(models.Model):
     name = models.CharField(max_length=255)
     cnic = models.CharField(max_length=100, unique=True)
-    contact = models.CharField(max_length=100, unique=True)
+    contact = models.CharField(max_length=100,blank=True)
     detail = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     

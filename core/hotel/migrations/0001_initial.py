@@ -56,7 +56,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=255)),
                 ('cnic', models.CharField(max_length=100, unique=True)),
-                ('contact', models.CharField(max_length=100, unique=True)),
+                ('contact', models.CharField(max_length=100, blank=True)),
                 ('detail', models.TextField(blank=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
             ],
